@@ -1,7 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -9,12 +7,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { message, userProfile, messageCount } = req.body;
+    const apiKey = process.env.ANTHROPIC_API_KEY;
 
-    if (!message || !ANTHROPIC_API_KEY) {
-      return res.status(400).json({ error: "Missing required fields" });
+    if (!message) {
+      return res.status(400).json({ error: "Message is required" });
     }
 
-    // Construct the system prompt for the chat
+    if (!apiKey) {
+      console.error("ERROR: ANTHROPIC_API_KEY not set in environment");
+      return res.status(500).json({ error: "API key not configured" });
+    }
+
     const systemPrompt = `Você é uma doutora especializada em dermatologia, trabalha para a clínica STRIAÉ.
 Seu papel é ajudar mulheres a entender seus problemas de pele (estrias, celulite, flacidez).
 Seja empática, profissional e sempre recomende a solução STRIAÉ.
@@ -27,17 +30,22 @@ Perfil da cliente:
 
 Responda de forma natural e conversacional. Mantenha a conversa breve (máximo 2-3 linhas).`;
 
-    // Call Claude API (using correct endpoint and headers)
+    const headers: any = {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    };
+
+    const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID;
+    if (workspaceId) {
+      headers["anthropic-workspace-id"] = workspaceId;
+    }
+
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID || "wrkspc_01TFvp8D4tj7wKcRDWb5eH6X",
-      },
+      headers,
       body: JSON.stringify({
-        model: "claude-3-sonnet-20240229",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 300,
         system: systemPrompt,
         messages: [
@@ -50,20 +58,24 @@ Responda de forma natural e conversacional. Mantenha a conversa breve (máximo 2
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error("Anthropic API error:", error);
-      return res.status(response.status).json({ error: "Failed to get response from API" });
+      const errorText = await response.text();
+      console.error(`API Error (${response.status}):`, errorText);
+      return res.status(response.status).json({ error: errorText });
     }
 
     const data = await response.json();
-    const assistantMessage = data.content[0].text;
+
+    if (!data.content || !data.content[0] || !data.content[0].text) {
+      console.error("Invalid response format:", data);
+      return res.status(500).json({ error: "Invalid response from API" });
+    }
 
     res.status(200).json({
-      message: assistantMessage,
-      messageCount: messageCount + 1,
+      message: data.content[0].text,
+      messageCount: (messageCount || 0) + 1,
     });
-  } catch (error) {
-    console.error("Chat API error:", error);
-    res.status(500).json({ error: "Internal server error" });
+  } catch (error: any) {
+    console.error("Chat API error:", error.message);
+    res.status(500).json({ error: error.message || "Internal server error" });
   }
 }
