@@ -1,6 +1,5 @@
 import { useState } from "react";
 import Head from "next/head";
-import { ShieldCheck, Stethoscope, Lock } from "lucide-react";
 import Quiz from "../components/Quiz";
 import ChatWindow from "../components/ChatWindow";
 import { clinic } from "../config/clinic";
@@ -40,33 +39,17 @@ export default function Home() {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 sm:py-14">
+        <main className="mx-auto w-full max-w-3xl flex-1 px-3 py-6 sm:px-5 sm:py-14">
           {stage === "quiz" && <Quiz onComplete={handleQuizComplete} />}
 
           {/* Oferta, dados e PIX acontecem dentro da conversa. */}
           {stage === "chat" && <ChatWindow userProfile={userProfile} />}
         </main>
 
-        <footer className="border-t border-line bg-cream-deep/50">
-          <div className="mx-auto max-w-3xl px-5 py-8">
-            <ul className="flex flex-col items-center justify-center gap-4 text-center sm:flex-row sm:gap-8">
-              <li className="flex items-center gap-2 text-sm text-muted">
-                <Stethoscope size={16} className="text-gold" />
-                Acompanhamento profissional
-              </li>
-              <li className="flex items-center gap-2 text-sm text-muted">
-                <Lock size={16} className="text-gold" />
-                Pagamento criptografado
-              </li>
-              <li className="flex items-center gap-2 text-sm text-muted">
-                <ShieldCheck size={16} className="text-gold" />
-                Garantia de {clinic.guaranteeDays} dias
-              </li>
-            </ul>
-            <p className="mt-6 text-center text-xs text-muted/70">
-              © {new Date().getFullYear()} {clinic.name}. Todos os direitos reservados.
-            </p>
-          </div>
+        <footer className="px-5 py-6">
+          <p className="text-center text-xs text-muted/70">
+            © {new Date().getFullYear()} {clinic.name}. Todos os direitos reservados.
+          </p>
         </footer>
       </div>
     </>

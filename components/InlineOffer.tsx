@@ -16,7 +16,17 @@ const includes = [
 
 export default function InlineOffer({ onAccept }: InlineOfferProps) {
   const [revealed, setRevealed] = useState(false);
+  const [armed, setArmed] = useState(false);
   const [timeLeft, setTimeLeft] = useState(OFFER_SECONDS);
+
+  // Ao revelar, o botão de comprar é montado bem embaixo do dedo que
+  // acabou de raspar, e o clique daquele mesmo toque cairia nele. Uma
+  // pausa curta evita comprar sem querer com um único toque.
+  useEffect(() => {
+    if (!revealed) return;
+    const t = setTimeout(() => setArmed(true), 600);
+    return () => clearTimeout(t);
+  }, [revealed]);
 
   // O relógio só começa quando ela descobre o desconto.
   useEffect(() => {
@@ -123,7 +133,10 @@ export default function InlineOffer({ onAccept }: InlineOfferProps) {
               )}
             </div>
 
-            <button onClick={onAccept} className="btn-primary mt-4 w-full">
+            <button
+              onClick={() => armed && onAccept()}
+              className="btn-primary mt-4 w-full"
+            >
               Quero garantir minha condição
               <ArrowRight size={17} />
             </button>

@@ -6,6 +6,7 @@ import InlineOffer from "./InlineOffer";
 import ProofCarousel from "./ProofCarousel";
 import ChatCheckout from "./ChatCheckout";
 import ChatPix from "./ChatPix";
+import ChatVideo from "./ChatVideo";
 import Disintegrate from "./Disintegrate";
 import { clinic, finalPrice } from "../config/clinic";
 
@@ -18,7 +19,7 @@ type Message =
   | { kind: "user"; content: string }
   | { kind: "proof" }
   | { kind: "offer"; dissolving?: boolean }
-  | { kind: "checkout" }
+  | { kind: "checkout"; dissolving?: boolean }
   | { kind: "pix"; pix: any };
 
 const MESSAGES_BEFORE_OFFER = 3;
@@ -44,6 +45,7 @@ export default function ChatWindow({ userProfile }: ChatWindowProps) {
   const [closed, setClosed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const offerShown = useRef(false);
+  const pendingPix = useRef<any>(null);
 
   useEffect(() => {
     setMessages([
@@ -65,23 +67,29 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
   // A oferta entra como a última fala da doutora, com as pausas de quem
   // está digitando. Fica no envio, e não num efeito: um efeito que depende
   // de `loading` e chama `setLoading` cancela os próprios timers na limpeza.
+  // Cada bloco entra com pausa e indicador de digitação. Despejar tudo de
+  // uma vez faz a conversa parecer script automático em vez de pessoa.
+  const say = async (message: Message, think = 1800) => {
+    setLoading(true);
+    await sleep(think);
+    setLoading(false);
+    setMessages((prev) => [...prev, message]);
+  };
+
   const runClosingSequence = async () => {
     offerShown.current = true;
     setClosed(true);
 
-    await sleep(1200);
-    setLoading(true);
-    await sleep(1700);
-    setLoading(false);
+    await sleep(1400);
+    await say({ kind: "doctor", content: closingMessage }, 2200);
 
-    setMessages((prev) => [
-      ...prev,
-      { kind: "doctor", content: closingMessage },
-      ...(hasProof ? [{ kind: "proof" } as Message] : []),
-    ]);
+    if (hasProof) {
+      await sleep(1300);
+      await say({ kind: "proof" }, 1400);
+    }
 
-    await sleep(1500);
-    setMessages((prev) => [...prev, { kind: "offer" }]);
+    await sleep(1600);
+    await say({ kind: "offer" }, 1300);
   };
 
   const handleSend = async () => {
@@ -149,20 +157,14 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
   const handleDissolved = async () => {
     setMessages((prev) => prev.filter((m) => m.kind !== "offer"));
 
-    await sleep(200);
-    setLoading(true);
-    await sleep(900);
-    setLoading(false);
+    await sleep(500);
+    await say({
+      kind: "doctor",
+      content: "Perfeito! Só preciso de três informações para liberar o seu acesso.",
+    });
 
-    setMessages((prev) => [
-      ...prev,
-      {
-        kind: "doctor",
-        content:
-          "Perfeito! Só preciso de três informações para liberar o seu acesso.",
-      },
-      { kind: "checkout" },
-    ]);
+    await sleep(700);
+    await say({ kind: "checkout" }, 900);
   };
 
   const handleCheckout = async (data: {
@@ -179,17 +181,11 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
         amount: finalPrice,
       });
 
-      setMessages((prev) => prev.filter((m) => m.kind !== "checkout"));
-      await sleep(150);
-      setLoading(true);
-      await sleep(700);
-      setLoading(false);
-
-      setMessages((prev) => [
-        ...prev,
-        { kind: "doctor", content: "Pronto, aqui está o seu PIX." },
-        { kind: "pix", pix: res.pix },
-      ]);
+      // O formulário também se desfaz: o PIX nasce do mesmo lugar.
+      pendingPix.current = res.pix;
+      setMessages((prev) =>
+        prev.map((m) => (m.kind === "checkout" ? { ...m, dissolving: true } : m))
+      );
     } catch {
       setPayError("Não consegui gerar o PIX agora. Tente de novo.");
     } finally {
@@ -197,18 +193,31 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
     }
   };
 
+  const handleCheckoutDissolved = async () => {
+    setMessages((prev) => prev.filter((m) => m.kind !== "checkout"));
+
+    await sleep(500);
+    await say({ kind: "doctor", content: "Pronto, aqui está o seu PIX." }, 1200);
+
+    await sleep(500);
+    setMessages((prev) => [
+      ...prev,
+      { kind: "pix", pix: pendingPix.current },
+    ]);
+  };
+
   const bubble = (key: number, node: React.ReactNode, wide = false) => (
-    <div key={key} className="animate-slide-right flex items-end gap-3">
+    <div key={key} className="animate-slide-right flex items-end gap-2 sm:gap-3">
       <span className="w-8 shrink-0" />
-      <div className={`w-full ${wide ? "max-w-[92%]" : "max-w-[82%]"}`}>{node}</div>
+      <div className={`w-full ${wide ? "max-w-[92%]" : "max-w-[88%] sm:max-w-[82%]"}`}>{node}</div>
     </div>
   );
 
   return (
     <div className="animate-fade-up overflow-hidden rounded-card border border-line bg-surface shadow-soft">
-      <div className="flex items-center gap-4 border-b border-line bg-cream/60 px-6 py-5">
+      <div className="flex items-center gap-3 border-b border-line bg-cream/60 px-4 py-4 sm:gap-4 sm:px-6 sm:py-5">
         <span className="relative">
-          <DoctorAvatar size={54} />
+          <DoctorAvatar size={46} />
           <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-cream bg-emerald-500" />
         </span>
         <div className="min-w-0">
@@ -223,13 +232,18 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
         <span className="ml-auto hidden text-xs text-muted sm:block">online agora</span>
       </div>
 
-      <div ref={scrollRef} className="h-[28rem] overflow-y-auto px-5 py-6 sm:px-6">
-        <div className="flex flex-col gap-5">
+      {/* Altura fixa deixa um vazio enorme no celular; aqui ela acompanha a
+          tela e ainda cabe o teclado quando o campo recebe foco. */}
+      <div
+        ref={scrollRef}
+        className="h-[58vh] min-h-[20rem] overflow-y-auto px-3 py-4 sm:h-[28rem] sm:px-6 sm:py-6"
+      >
+        <div className="flex flex-col gap-4 sm:gap-5">
           {messages.map((msg, i) => {
             if (msg.kind === "user") {
               return (
                 <div key={i} className="animate-slide-left flex justify-end">
-                  <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-sm bg-rose px-4 py-3 leading-relaxed text-white">
+                  <div className="max-w-[88%] sm:max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-sm bg-rose px-3.5 py-2.5 text-[15px] leading-relaxed text-white sm:px-4 sm:py-3 sm:text-base">
                     {msg.content}
                   </div>
                 </div>
@@ -238,9 +252,9 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
 
             if (msg.kind === "doctor") {
               return (
-                <div key={i} className="animate-slide-right flex items-end gap-3">
+                <div key={i} className="animate-slide-right flex items-end gap-2 sm:gap-3">
                   <DoctorAvatar size={32} ring={false} />
-                  <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-bl-sm border border-line bg-cream/70 px-4 py-3 leading-relaxed text-ink">
+                  <div className="max-w-[88%] sm:max-w-[82%] whitespace-pre-line rounded-2xl rounded-bl-sm border border-line bg-cream/70 px-3.5 py-2.5 text-[15px] leading-relaxed text-ink sm:px-4 sm:py-3 sm:text-base">
                     {msg.content}
                   </div>
                 </div>
@@ -254,21 +268,17 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
                   <div
                     className={
                       videos.length > 1
-                        ? "grid grid-cols-1 gap-2 sm:grid-cols-2"
+                        ? "grid grid-cols-2 gap-2"
                         : "max-w-[280px]"
                     }
                   >
                     {videos.map((src) => (
-                      <video
+                      <ChatVideo
                         key={src}
                         // Os nomes vêm de upload e podem ter espaço e
                         // parêntese, que quebram o src sem codificar.
                         src={encodeURI(src)}
                         poster={clinic.socialProof.poster || undefined}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        className="w-full rounded-2xl border border-line bg-ink"
                       />
                     ))}
                   </div>
@@ -281,7 +291,7 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
 
             if (msg.kind === "offer") {
               return (
-                <div key={i} className="flex items-end gap-3">
+                <div key={i} className="flex items-end gap-2 sm:gap-3">
                   <span className="w-8 shrink-0" />
                   <div className="w-full max-w-[92%]">
                     <Disintegrate
@@ -298,12 +308,15 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
             if (msg.kind === "checkout") {
               return bubble(
                 i,
-                <>
+                <Disintegrate
+                  active={Boolean(msg.dissolving)}
+                  onDone={handleCheckoutDissolved}
+                >
                   <ChatCheckout onSubmit={handleCheckout} loading={paying} />
                   {payError && (
                     <p className="mt-2 text-sm text-rose-deep">{payError}</p>
                   )}
-                </>,
+                </Disintegrate>,
                 true
               );
             }
@@ -312,7 +325,7 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
           })}
 
           {loading && (
-            <div className="animate-fade-in flex items-end gap-3">
+            <div className="animate-fade-in flex items-end gap-2 sm:gap-3">
               <DoctorAvatar size={32} ring={false} />
               <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm border border-line bg-cream/70 px-4 py-4">
                 {[0, 1, 2].map((i) => (
@@ -328,8 +341,8 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
         </div>
       </div>
 
-      <div className="border-t border-line bg-cream/40 px-5 py-4 sm:px-6">
-        <div className="flex items-center gap-3">
+      <div className="border-t border-line bg-cream/40 px-3 py-3 sm:px-6 sm:py-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           <input
             type="text"
             value={input}

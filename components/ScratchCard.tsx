@@ -69,7 +69,9 @@ export default function ScratchCard({
 
   const clearedRatio = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return 0;
+    // Sem a camada dourada pintada, todo pixel está transparente e a conta
+    // daria 100% — um toque qualquer revelaria o desconto de graça.
+    if (!canvas || !ready) return 0;
     const ctx = canvas.getContext("2d");
     if (!ctx) return 0;
 
