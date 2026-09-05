@@ -37,7 +37,7 @@ export default function ChatWindow({ userProfile, onMessageCount, showOffer }: C
     setMessages((prev) => [...prev, { role: "user", content: userMessage, isDoctor: false }]);
 
     try {
-      const response = await axios.post("/api/chat", {
+      const response = await axios.post("/api/chat-gemini", {
         message: userMessage,
         userProfile,
         messageCount: messageCount + 1,
