@@ -227,6 +227,31 @@ export default function PaymentForm({ userProfile }: PaymentFormProps) {
           </dl>
         </div>
 
+        {clinic.paymentVideo.src && (
+          <figure className="mt-7 overflow-hidden rounded-lg border border-line bg-cream/70">
+            <video
+              src={clinic.paymentVideo.src}
+              poster={clinic.paymentVideo.poster || undefined}
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full bg-ink"
+            />
+            {(clinic.paymentVideo.title || clinic.paymentVideo.description) && (
+              <figcaption className="px-5 py-4">
+                {clinic.paymentVideo.title && (
+                  <p className="font-medium text-ink">{clinic.paymentVideo.title}</p>
+                )}
+                {clinic.paymentVideo.description && (
+                  <p className="mt-1 text-sm text-muted">
+                    {clinic.paymentVideo.description}
+                  </p>
+                )}
+              </figcaption>
+            )}
+          </figure>
+        )}
+
         <ol className="mt-7 flex flex-col gap-4">
           {[
             "Copie a chave e faça o PIX no app do seu banco",

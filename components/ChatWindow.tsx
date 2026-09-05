@@ -1,42 +1,52 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowUp, Lock, Sparkles } from "lucide-react";
+import { ArrowUp, Lock } from "lucide-react";
 import axios from "axios";
 import DoctorAvatar from "./DoctorAvatar";
+import InlineOffer from "./InlineOffer";
+import ProofCarousel from "./ProofCarousel";
 import { clinic } from "../config/clinic";
 
 interface ChatWindowProps {
   userProfile: any;
-  onMessageCount: (count: number) => void;
-  offerUnlocked: boolean;
-  onReopenOffer: () => void;
+  onAccept: () => void;
 }
 
-interface Message {
-  role: "doctor" | "user";
-  content: string;
-}
+type Message =
+  | { kind: "doctor"; content: string }
+  | { kind: "user"; content: string }
+  | { kind: "proof" }
+  | { kind: "offer" };
 
-export default function ChatWindow({
-  userProfile,
-  onMessageCount,
-  offerUnlocked,
-  onReopenOffer,
-}: ChatWindowProps) {
+const MESSAGES_BEFORE_OFFER = 3;
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+const hasProof = clinic.socialProof.images.length > 0;
+
+const closingMessage = `Ótimo. Deixa eu te explicar como o ${clinic.name} funciona.
+
+Não é sessão em clínica: é um método que você faz em casa, uma rotina diária com cuidados dermatológicos que quase ninguém conhece. Eu te acompanho durante o processo.${
+  hasProof
+    ? `\n\n${clinic.socialProof.intro || "Aproveitando, olha alguns resultados que acabei de receber:"}`
+    : ""
+}`;
+
+export default function ChatWindow({ userProfile, onAccept }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sentCount, setSentCount] = useState(0);
+  const [closed, setClosed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const offerShown = useRef(false);
 
   useEffect(() => {
     setMessages([
       {
-        role: "doctor",
-        content: `Olá, ${userProfile?.name}! Sou a ${clinic.doctor.name}, ${clinic.doctor.title.toLowerCase()} aqui da ${clinic.name}.
+        kind: "doctor",
+        content: `Oi, ${userProfile?.name}! Sou a ${clinic.doctor.name}, ${clinic.doctor.title.toLowerCase()} da ${clinic.name}.
 
-Vi que você convive com ${userProfile?.issues} há ${userProfile?.duration}. Sei o quanto isso incomoda, e quero entender melhor o seu caso antes de indicar qualquer coisa.
-
-Me conta: o que mais te incomoda no dia a dia?`,
+Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te incomoda no dia a dia?`,
       },
     ]);
   }, [userProfile]);
@@ -47,37 +57,75 @@ Me conta: o que mais te incomoda no dia a dia?`,
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
+  // A oferta entra como a última fala da doutora, com as pausas de quem
+  // está digitando. Fica no envio, e não num efeito: um efeito que depende
+  // de `loading` e chama `setLoading` cancela os próprios timers na limpeza.
+  const runClosingSequence = async () => {
+    offerShown.current = true;
+    setClosed(true);
+
+    await sleep(1200);
+    setLoading(true);
+    await sleep(1700);
+    setLoading(false);
+
+    setMessages((prev) => [
+      ...prev,
+      { kind: "doctor", content: closingMessage },
+      ...(hasProof ? [{ kind: "proof" } as Message] : []),
+    ]);
+
+    await sleep(1500);
+    setMessages((prev) => [...prev, { kind: "offer" }]);
+  };
+
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || closed) return;
 
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setMessages((prev) => [...prev, { kind: "user", content: text }]);
     setLoading(true);
 
+    // Sem o histórico, cada resposta sai desconectada do que ela contou.
+    const history = messages
+      .filter((m): m is Extract<Message, { content: string }> =>
+        m.kind === "doctor" || m.kind === "user"
+      )
+      .map((m) => ({
+        role: m.kind === "doctor" ? ("assistant" as const) : ("user" as const),
+        content: m.content,
+      }));
+
+    let answered = false;
     try {
       const { data } = await axios.post("/api/chat", {
         message: text,
         userProfile,
         messageCount: sentCount,
+        history,
       });
-
-      setMessages((prev) => [...prev, { role: "doctor", content: data.message }]);
-
-      const next = sentCount + 1;
-      setSentCount(next);
-      onMessageCount(next);
+      setMessages((prev) => [...prev, { kind: "doctor", content: data.message }]);
+      answered = true;
     } catch {
       setMessages((prev) => [
         ...prev,
         {
-          role: "doctor",
-          content:
-            "Desculpe, tive uma instabilidade aqui. Pode repetir, por favor?",
+          kind: "doctor",
+          content: "Desculpe, tive uma instabilidade aqui. Pode repetir, por favor?",
         },
       ]);
     } finally {
       setLoading(false);
+    }
+
+    if (!answered) return;
+
+    const next = sentCount + 1;
+    setSentCount(next);
+
+    if (next >= MESSAGES_BEFORE_OFFER && !offerShown.current) {
+      await runClosingSequence();
     }
   };
 
@@ -100,36 +148,50 @@ Me conta: o que mais te incomoda no dia a dia?`,
         <span className="ml-auto hidden text-xs text-muted sm:block">online agora</span>
       </div>
 
-      {offerUnlocked && (
-        <button
-          onClick={onReopenOffer}
-          className="animate-fade-in flex w-full items-center justify-center gap-2
-                     border-b border-gold/30 bg-gold-soft/50 px-5 py-3 text-sm
-                     font-medium text-ink transition-colors hover:bg-gold-soft"
-        >
-          <Sparkles size={15} className="text-gold" />
-          Sua condição especial está reservada — rever
-        </button>
-      )}
-
-      <div ref={scrollRef} className="h-[26rem] overflow-y-auto px-5 py-6 sm:px-6">
+      <div ref={scrollRef} className="h-[28rem] overflow-y-auto px-5 py-6 sm:px-6">
         <div className="flex flex-col gap-5">
-          {messages.map((msg, i) =>
-            msg.role === "doctor" ? (
-              <div key={i} className="animate-slide-right flex items-end gap-3">
-                <DoctorAvatar size={32} ring={false} />
-                <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-bl-sm border border-line bg-cream/70 px-4 py-3 leading-relaxed text-ink">
-                  {msg.content}
+          {messages.map((msg, i) => {
+            if (msg.kind === "user") {
+              return (
+                <div key={i} className="animate-slide-left flex justify-end">
+                  <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-sm bg-rose px-4 py-3 leading-relaxed text-white">
+                    {msg.content}
+                  </div>
+                </div>
+              );
+            }
+
+            if (msg.kind === "doctor") {
+              return (
+                <div key={i} className="animate-slide-right flex items-end gap-3">
+                  <DoctorAvatar size={32} ring={false} />
+                  <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-bl-sm border border-line bg-cream/70 px-4 py-3 leading-relaxed text-ink">
+                    {msg.content}
+                  </div>
+                </div>
+              );
+            }
+
+            if (msg.kind === "proof") {
+              return (
+                <div key={i} className="animate-slide-right flex items-end gap-3">
+                  <span className="w-8 shrink-0" />
+                  <div className="w-full max-w-[82%]">
+                    <ProofCarousel images={clinic.socialProof.images} />
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={i} className="flex items-end gap-3">
+                <span className="w-8 shrink-0" />
+                <div className="w-full max-w-[92%]">
+                  <InlineOffer onAccept={onAccept} />
                 </div>
               </div>
-            ) : (
-              <div key={i} className="animate-slide-left flex justify-end">
-                <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-sm bg-rose px-4 py-3 leading-relaxed text-white">
-                  {msg.content}
-                </div>
-              </div>
-            )
-          )}
+            );
+          })}
 
           {loading && (
             <div className="animate-fade-in flex items-end gap-3">
@@ -155,14 +217,18 @@ Me conta: o que mais te incomoda no dia a dia?`,
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            placeholder="Escreva sua mensagem..."
-            disabled={loading}
+            placeholder={
+              closed
+                ? "Garanta sua condição acima para continuar"
+                : "Escreva sua mensagem..."
+            }
+            disabled={loading || closed}
             aria-label="Mensagem para a doutora"
             className="field flex-1 disabled:opacity-60"
           />
           <button
             onClick={handleSend}
-            disabled={loading || !input.trim()}
+            disabled={loading || closed || !input.trim()}
             aria-label="Enviar mensagem"
             className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg
                        bg-rose text-white transition-all duration-300

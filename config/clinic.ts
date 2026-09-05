@@ -10,7 +10,7 @@ export const clinic = {
     title: "Dermatologista",
     // Coloque a foto em public/ e aponte aqui (ex.: "/doutora.jpg").
     // Vazio = monograma com as iniciais, sem requisição quebrada.
-    photo: "",
+    photo: "/doutora.jpg",
     // Ex.: "CRM-SP 123456". Vazio = o selo de registro não é exibido.
     crm: "",
   },
@@ -24,6 +24,47 @@ export const clinic = {
   },
 
   guaranteeDays: 7,
+
+  // Vagas reais que a clínica consegue atender no período da campanha.
+  // 0 = a linha de vagas não aparece. Nunca coloque um número que você
+  // não consiga sustentar se alguém perguntar.
+  spotsLeft: 0,
+
+  // O que a cliente recebe ao comprar. Ajuste conforme a entrega real
+  // do método — é isso que ela lê antes de decidir pagar.
+  includes: [
+    "Método STRIAÉ completo, passo a passo, para fazer em casa",
+    "Rotina diária com orientação dermatológica",
+    "Lista do que usar e do que evitar na sua pele",
+    "Acompanhamento com a doutora durante o processo",
+    "Suporte direto pelo WhatsApp",
+  ],
+
+  // Carrossel exibido no chat, junto da mensagem que explica o método.
+  // Coloque os arquivos em public/resultados/ e descomente a lista abaixo.
+  // Leia public/resultados/LEIA-ME.md antes de publicar: só entra material
+  // de clientes suas, com autorização de uso de imagem assinada.
+  // Vazio = o carrossel não aparece e a mensagem não menciona resultados.
+  socialProof: {
+    images: [] as { src: string; caption?: string }[],
+    // images: [
+    //   { src: "/resultados/resultado-1.jpg" },
+    //   { src: "/resultados/resultado-2.jpg" },
+    //   { src: "/resultados/resultado-3.jpg" },
+    // ],
+    intro: "",
+  },
+
+  // Vídeo exibido na tela do PIX, logo depois de a chave ser gerada.
+  // Coloque o arquivo em public/video/ e aponte aqui.
+  // Vazio = a seção não aparece.
+  paymentVideo: {
+    src: "",
+    // Imagem de capa mostrada antes do play (opcional).
+    poster: "",
+    title: "",
+    description: "",
+  },
 
   // Depoimentos reais de clientes. Vazio = a seção não aparece.
   // Ex.: { name: "Juliana M.", text: "...", result: "3 meses de tratamento" }

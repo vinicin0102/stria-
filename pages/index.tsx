@@ -3,29 +3,18 @@ import Head from "next/head";
 import { ShieldCheck, Stethoscope, Lock } from "lucide-react";
 import Quiz from "../components/Quiz";
 import ChatWindow from "../components/ChatWindow";
-import OfferStep from "../components/OfferStep";
 import PaymentForm from "../components/PaymentForm";
 import { clinic } from "../config/clinic";
 
-type Stage = "quiz" | "chat" | "offer" | "payment";
-
-const MESSAGES_BEFORE_OFFER = 3;
+type Stage = "quiz" | "chat" | "payment";
 
 export default function Home() {
   const [stage, setStage] = useState<Stage>("quiz");
   const [userProfile, setUserProfile] = useState<any>(null);
-  const [offerUnlocked, setOfferUnlocked] = useState(false);
 
   const handleQuizComplete = (answers: any) => {
     setUserProfile(answers);
     setStage("chat");
-  };
-
-  const handleMessageCount = (count: number) => {
-    if (count >= MESSAGES_BEFORE_OFFER && !offerUnlocked) {
-      setOfferUnlocked(true);
-      setStage("offer");
-    }
   };
 
   return (
@@ -55,21 +44,10 @@ export default function Home() {
         <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 sm:py-14">
           {stage === "quiz" && <Quiz onComplete={handleQuizComplete} />}
 
-          {/* O chat continua montado por trás da oferta: desmontá-lo apagaria
-              a conversa quando a cliente volta atrás. */}
-          {(stage === "chat" || stage === "offer") && (
+          {stage === "chat" && (
             <ChatWindow
               userProfile={userProfile}
-              onMessageCount={handleMessageCount}
-              offerUnlocked={offerUnlocked}
-              onReopenOffer={() => setStage("offer")}
-            />
-          )}
-
-          {stage === "offer" && (
-            <OfferStep
               onAccept={() => setStage("payment")}
-              onDecline={() => setStage("chat")}
             />
           )}
 

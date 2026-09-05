@@ -1,6 +1,32 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { clinic } from "../../config/clinic";
 
 const MODEL = "claude-sonnet-5";
+const MAX_HISTORY = 12;
+
+const CLINIC = {
+  name: clinic.name,
+  doctorName: clinic.doctor.name,
+  doctorTitle: clinic.doctor.title.toLowerCase(),
+};
+
+type Turn = { role: "user" | "assistant"; content: string };
+
+// O histórico vem do navegador: aceite só o formato esperado e limite o
+// tamanho, em vez de repassar o que chegou para a API.
+function sanitizeHistory(raw: unknown): Turn[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (t): t is Turn =>
+        !!t &&
+        (t.role === "user" || t.role === "assistant") &&
+        typeof t.content === "string" &&
+        t.content.trim().length > 0
+    )
+    .slice(-MAX_HISTORY)
+    .map((t) => ({ role: t.role, content: t.content.slice(0, 2000) }));
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -8,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { message, userProfile, messageCount } = req.body;
+    const { message, userProfile, messageCount, history } = req.body;
     const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!message) {
@@ -20,17 +46,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: "API key not configured" });
     }
 
-    const systemPrompt = `Você é uma doutora especializada em dermatologia, trabalha para a clínica STRIAÉ.
-Seu papel é ajudar mulheres a entender seus problemas de pele (estrias, celulite, flacidez).
-Seja empática, profissional e sempre recomende a solução STRIAÉ.
+    const systemPrompt = `Você é ${CLINIC.doctorName}, ${CLINIC.doctorTitle} da ${CLINIC.name}, conversando por chat com uma mulher interessada em tratar estrias, celulite ou flacidez.
 
-Perfil da cliente:
-- Principais problemas: ${userProfile?.issues || "não especificado"}
-- Duração do problema: ${userProfile?.duration || "não especificado"}
-- Tratamentos anteriores: ${userProfile?.treatments || "não especificado"}
-- Objetivos: ${userProfile?.goals || "não especificado"}
+SOBRE O MÉTODO ${CLINIC.name.toUpperCase()}:
+É um método para ela fazer em casa — uma rotina passo a passo com orientações dermatológicas de cuidado com a pele. Não é procedimento de consultório, não é sessão em clínica. Ela recebe o passo a passo e aplica sozinha na rotina dela.
 
-Responda de forma natural e conversacional. Mantenha a conversa breve (máximo 2-3 linhas).`;
+PERFIL DELA:
+- Queixa principal: ${userProfile?.issues || "não informado"}
+- Convive há: ${userProfile?.duration || "não informado"}
+- Já tentou: ${userProfile?.treatments || "não informado"}
+- Objetivo: ${userProfile?.goals || "não informado"}
+
+COMO RESPONDER:
+- No máximo 2 frases curtas. Seja direta.
+- Responda ao que ela ACABOU de dizer. Se ela fez uma pergunta, responda a pergunta.
+- Não repita o que ela disse de volta ("entendo sua frustração", "sei como incomoda") — vá direto ao conteúdo.
+- Não repita o que você já falou antes na conversa.
+- Termine com uma pergunta curta só quando fizer sentido.
+- Sem emoji.
+- Não prometa prazo para as estrias sumirem nem garanta resultado. Fale do que o método faz, não de milagre.`;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -48,9 +82,14 @@ Responda de forma natural e conversacional. Mantenha a conversa breve (máximo 2
       headers,
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 500,
+        max_tokens: 300,
         system: systemPrompt,
-        messages: [{ role: "user", content: message }],
+        // Sem o histórico a doutora responde cada mensagem no vácuo e
+        // ignora o que a cliente acabou de contar.
+        messages: [
+          ...sanitizeHistory(history),
+          { role: "user", content: message },
+        ],
       }),
     });
 
