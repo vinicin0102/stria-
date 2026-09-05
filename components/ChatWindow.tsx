@@ -1,61 +1,79 @@
 import { useState, useEffect, useRef } from "react";
-import { Send } from "lucide-react";
+import { ArrowUp, Lock, Sparkles } from "lucide-react";
 import axios from "axios";
+import DoctorAvatar from "./DoctorAvatar";
+import { clinic } from "../config/clinic";
 
 interface ChatWindowProps {
   userProfile: any;
   onMessageCount: (count: number) => void;
-  showOffer: boolean;
+  offerUnlocked: boolean;
+  onReopenOffer: () => void;
 }
 
-export default function ChatWindow({ userProfile, onMessageCount, showOffer }: ChatWindowProps) {
-  const [messages, setMessages] = useState<any[]>([]);
+interface Message {
+  role: "doctor" | "user";
+  content: string;
+}
+
+export default function ChatWindow({
+  userProfile,
+  onMessageCount,
+  offerUnlocked,
+  onReopenOffer,
+}: ChatWindowProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [messageCount, setMessageCount] = useState(0);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [sentCount, setSentCount] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Initial greeting from doctor
-    const greeting = `Olá ${userProfile?.name}! 👋\n\nSou a Dra. Sarah, especialista em dermatologia da clínica STRIAÉ. Vi aqui que você tem interesse em resolver seus problemas com ${userProfile?.issues}.\n\nEu adoraria ajudar você a transformar sua pele! Como você se sente em relação à sua situação atual?`;
+    setMessages([
+      {
+        role: "doctor",
+        content: `Olá, ${userProfile?.name}! Sou a ${clinic.doctor.name}, ${clinic.doctor.title.toLowerCase()} aqui da ${clinic.name}.
 
-    setMessages([{ role: "assistant", content: greeting, isDoctor: true }]);
+Vi que você convive com ${userProfile?.issues} há ${userProfile?.duration}. Sei o quanto isso incomoda, e quero entender melhor o seu caso antes de indicar qualquer coisa.
+
+Me conta: o que mais te incomoda no dia a dia?`,
+      },
+    ]);
   }, [userProfile]);
 
+  // Rola apenas o painel de mensagens — scrollIntoView puxaria a página inteira.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
 
-    const userMessage = input.trim();
     setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
     setLoading(true);
 
-    // Add user message
-    setMessages((prev) => [...prev, { role: "user", content: userMessage, isDoctor: false }]);
-
     try {
-      const response = await axios.post("/api/chat", {
-        message: userMessage,
+      const { data } = await axios.post("/api/chat", {
+        message: text,
         userProfile,
-        messageCount: messageCount + 1,
+        messageCount: sentCount,
       });
 
-      setMessageCount((prev) => prev + 1);
-      onMessageCount(messageCount + 1);
+      setMessages((prev) => [...prev, { role: "doctor", content: data.message }]);
 
-      // Add assistant response
-      setMessages((prev) => [...prev, { role: "assistant", content: response.data.message, isDoctor: true }]);
-    } catch (error) {
-      console.error("Error sending message:", error);
+      const next = sentCount + 1;
+      setSentCount(next);
+      onMessageCount(next);
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
-          role: "assistant",
-          content: "Desculpe, tive um problema para responder. Tente novamente!",
-          isDoctor: true,
+          role: "doctor",
+          content:
+            "Desculpe, tive uma instabilidade aqui. Pode repetir, por favor?",
         },
       ]);
     } finally {
@@ -63,70 +81,102 @@ export default function ChatWindow({ userProfile, onMessageCount, showOffer }: C
     }
   };
 
-  if (showOffer) {
-    return null; // The offer will be shown by parent component
-  }
-
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden max-w-2xl mx-auto">
-      {/* Chat Header */}
-      <div className="bg-gradient-to-r from-primary to-secondary text-white p-6">
-        <h2 className="text-2xl font-bold">Chat com Dra. Sarah</h2>
-        <p className="text-pink-100 text-sm">Especialista em Dermatologia</p>
-        {messageCount >= 2 && (
-          <p className="text-yellow-200 text-xs mt-2">⚡ Oferta especial chegando em breve!</p>
-        )}
+    <div className="animate-fade-up overflow-hidden rounded-card border border-line bg-surface shadow-soft">
+      <div className="flex items-center gap-4 border-b border-line bg-cream/60 px-6 py-5">
+        <span className="relative">
+          <DoctorAvatar size={54} />
+          <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-cream bg-emerald-500" />
+        </span>
+        <div className="min-w-0">
+          <p className="font-display text-xl leading-tight text-ink">
+            {clinic.doctor.name}
+          </p>
+          <p className="text-sm text-muted">
+            {clinic.doctor.title}
+            {clinic.doctor.crm && ` · ${clinic.doctor.crm}`}
+          </p>
+        </div>
+        <span className="ml-auto hidden text-xs text-muted sm:block">online agora</span>
       </div>
 
-      {/* Messages */}
-      <div className="h-96 overflow-y-auto p-6 bg-gray-50">
-        {messages.map((msg, idx) => (
-          <div key={idx} className={`mb-4 flex ${msg.isDoctor ? "justify-start" : "justify-end"}`}>
-            <div
-              className={`max-w-xs lg:max-w-md px-4 py-3 rounded-lg whitespace-pre-wrap ${
-                msg.isDoctor
-                  ? "bg-primary text-white rounded-bl-none"
-                  : "bg-secondary text-white rounded-br-none"
-              }`}
-            >
-              {msg.content}
+      {offerUnlocked && (
+        <button
+          onClick={onReopenOffer}
+          className="animate-fade-in flex w-full items-center justify-center gap-2
+                     border-b border-gold/30 bg-gold-soft/50 px-5 py-3 text-sm
+                     font-medium text-ink transition-colors hover:bg-gold-soft"
+        >
+          <Sparkles size={15} className="text-gold" />
+          Sua condição especial está reservada — rever
+        </button>
+      )}
+
+      <div ref={scrollRef} className="h-[26rem] overflow-y-auto px-5 py-6 sm:px-6">
+        <div className="flex flex-col gap-5">
+          {messages.map((msg, i) =>
+            msg.role === "doctor" ? (
+              <div key={i} className="animate-slide-right flex items-end gap-3">
+                <DoctorAvatar size={32} ring={false} />
+                <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-bl-sm border border-line bg-cream/70 px-4 py-3 leading-relaxed text-ink">
+                  {msg.content}
+                </div>
+              </div>
+            ) : (
+              <div key={i} className="animate-slide-left flex justify-end">
+                <div className="max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-sm bg-rose px-4 py-3 leading-relaxed text-white">
+                  {msg.content}
+                </div>
+              </div>
+            )
+          )}
+
+          {loading && (
+            <div className="animate-fade-in flex items-end gap-3">
+              <DoctorAvatar size={32} ring={false} />
+              <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-sm border border-line bg-cream/70 px-4 py-4">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="typing-dot h-1.5 w-1.5 rounded-full bg-rose"
+                    style={{ animationDelay: `${i * 0.18}s` }}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-        {loading && (
-          <div className="flex justify-start mb-4">
-            <div className="bg-primary text-white px-4 py-3 rounded-lg rounded-bl-none">
-              <span className="inline-block w-2 h-2 bg-white rounded-full mr-1 animate-bounce"></span>
-              <span className="inline-block w-2 h-2 bg-white rounded-full mr-1 animate-bounce" style={{ animationDelay: "0.2s" }}></span>
-              <span className="inline-block w-2 h-2 bg-white rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></span>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
+          )}
+        </div>
       </div>
 
-      {/* Input */}
-      <div className="border-t p-4 bg-white">
-        <div className="flex gap-2">
+      <div className="border-t border-line bg-cream/40 px-5 py-4 sm:px-6">
+        <div className="flex items-center gap-3">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-            placeholder="Digite sua mensagem..."
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            placeholder="Escreva sua mensagem..."
             disabled={loading}
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary disabled:bg-gray-100"
+            aria-label="Mensagem para a doutora"
+            className="field flex-1 disabled:opacity-60"
           />
           <button
-            onClick={handleSendMessage}
+            onClick={handleSend}
             disabled={loading || !input.trim()}
-            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-opacity-90 transition disabled:opacity-50 font-semibold flex items-center gap-2"
+            aria-label="Enviar mensagem"
+            className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg
+                       bg-rose text-white transition-all duration-300
+                       hover:bg-rose-deep hover:shadow-lift
+                       disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-rose
+                       disabled:hover:shadow-none"
           >
-            <Send size={18} />
-            Enviar
+            <ArrowUp size={20} />
           </button>
         </div>
-        <p className="text-xs text-gray-500 mt-2">💬 {messageCount}/3 mensagens antes da oferta</p>
+        <p className="mt-3 flex items-center justify-center gap-2 text-xs text-muted">
+          <Lock size={12} className="text-gold" />
+          Conversa privada e protegida
+        </p>
       </div>
     </div>
   );

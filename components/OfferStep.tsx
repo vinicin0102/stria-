@@ -1,135 +1,154 @@
 import { useState, useEffect } from "react";
-import { Zap, X, AlertCircle } from "lucide-react";
+import { X, Check, Clock, ShieldCheck, Sparkles } from "lucide-react";
+import { clinic, finalPrice, savings, brl } from "../config/clinic";
 
 interface OfferStepProps {
-  userProfile: any;
   onAccept: () => void;
   onDecline: () => void;
 }
 
-export default function OfferStep({ userProfile, onAccept, onDecline }: OfferStepProps) {
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+const OFFER_SECONDS = 5 * 60;
+
+const includes = [
+  "4 sessões do protocolo " + clinic.name,
+  "Acompanhamento personalizado com a doutora",
+  "Produtos complementares para uso em casa",
+  `Garantia de satisfação de ${clinic.guaranteeDays} dias`,
+  "Suporte direto pelo WhatsApp",
+];
+
+export default function OfferStep({ onAccept, onDecline }: OfferStepProps) {
+  const [timeLeft, setTimeLeft] = useState(OFFER_SECONDS);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
+    const timer = setInterval(
+      () => setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0)),
+      1000
+    );
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onDecline();
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+  }, [onDecline]);
+
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
-
-  const originalPrice = 1200;
-  const discountPercent = 40;
-  const discountedPrice = originalPrice * (1 - discountPercent / 100);
+  const expired = timeLeft === 0;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden">
-        {/* Close Button */}
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Condição exclusiva"
+      className="animate-fade-in fixed inset-0 z-50 flex items-start justify-center
+                 overflow-y-auto bg-ink/40 p-4 backdrop-blur-sm sm:items-center"
+    >
+      <div className="animate-scale-in relative my-auto w-full max-w-lg rounded-card bg-surface shadow-modal">
         <button
           onClick={onDecline}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10"
+          aria-label="Fechar"
+          className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center
+                     rounded-full text-muted transition-colors hover:bg-cream hover:text-ink"
         >
-          <X size={24} />
+          <X size={18} />
         </button>
 
-        {/* Header */}
-        <div className="bg-gradient-to-r from-primary to-secondary text-white p-8 relative overflow-hidden">
-          <div className="absolute top-0 right-0 text-white opacity-20 text-8xl font-bold">🎁</div>
-          <h2 className="text-4xl font-bold mb-2 relative z-10">Oferta Exclusiva!</h2>
-          <p className="text-pink-100 text-lg relative z-10">Apenas para você que chegou até aqui</p>
+        <div className="px-7 pt-10 text-center sm:px-10">
+          <span className="inline-flex items-center gap-2 rounded-full bg-gold-soft px-4 py-1.5">
+            <Sparkles size={13} className="text-gold" />
+            <span className="eyebrow !text-ink">Condição exclusiva</span>
+          </span>
+
+          <h2 className="mt-5 font-display text-3xl leading-snug text-ink sm:text-4xl">
+            Liberada para o seu perfil
+          </h2>
+          <p className="mx-auto mt-3 max-w-sm text-muted">
+            Com base na sua avaliação, a doutora liberou uma condição especial no
+            protocolo completo.
+          </p>
         </div>
 
-        {/* Content */}
-        <div className="p-8">
-          {/* Scarcity Alert */}
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8 flex items-start gap-3">
-            <AlertCircle className="text-yellow-600 flex-shrink-0" size={20} />
-            <div>
-              <p className="font-bold text-yellow-800">⚠️ Oferta Limitada</p>
-              <p className="text-yellow-700 text-sm">
-                Apenas {Math.floor(Math.random() * 3) + 2} clientes restantes neste horário!
-              </p>
-            </div>
+        <div className="mx-7 mt-8 rounded-lg bg-cream/70 px-6 py-7 text-center sm:mx-10">
+          <p className="eyebrow">Protocolo completo {clinic.name}</p>
+
+          <div className="mt-4 flex items-center justify-center gap-3">
+            <span className="text-lg text-muted line-through">
+              {brl(clinic.price.original)}
+            </span>
+            <span className="rounded-full bg-rose px-3 py-1 text-sm font-medium text-white">
+              −{clinic.price.discountPercent}%
+            </span>
           </div>
 
-          {/* Offer Details */}
-          <div className="text-center mb-8">
-            <h3 className="text-2xl font-bold text-gray-800 mb-4">
-              Tratamento Completo STRIAÉ
-            </h3>
+          <p className="mt-3 font-display text-5xl text-ink sm:text-6xl">
+            {brl(finalPrice)}
+          </p>
 
-            <div className="flex items-center justify-center gap-4 mb-6">
-              <div>
-                <p className="text-gray-500 line-through text-2xl">R$ {originalPrice.toLocaleString("pt-BR")}</p>
-              </div>
-              <div className="bg-primary text-white px-4 py-2 rounded-full font-bold text-lg">
-                -{discountPercent}%
-              </div>
-              <div>
-                <p className="text-primary text-4xl font-bold">R$ {discountedPrice.toLocaleString("pt-BR")}</p>
-              </div>
-            </div>
+          <p className="mt-3 text-sm text-muted">
+            Você economiza{" "}
+            <span className="font-medium text-rose-deep">{brl(savings)}</span>
+          </p>
+        </div>
 
-            <p className="text-gray-600 mb-2">Você economiza: <span className="font-bold text-primary">R$ {(originalPrice - discountedPrice).toLocaleString("pt-BR")}</span></p>
-          </div>
-
-          {/* What's Included */}
-          <div className="bg-gray-50 p-6 rounded-lg mb-8">
-            <h4 className="font-bold text-gray-800 mb-4">O que está incluído:</h4>
-            <ul className="space-y-2 text-gray-700">
-              <li className="flex items-center gap-2">
-                <span className="text-primary font-bold">✓</span> 4 sessões de tratamento STRIAÉ
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-primary font-bold">✓</span> Acompanhamento personalizado com doutora
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-primary font-bold">✓</span> Produtos cosméticos complementares
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-primary font-bold">✓</span> Garantia de satisfação 100%
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-primary font-bold">✓</span> Suporte via WhatsApp 24/7
-              </li>
-            </ul>
-          </div>
-
-          {/* Timer */}
-          <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-8 text-center">
-            <p className="text-red-800 font-bold text-lg mb-2">⏰ Oferta expira em:</p>
-            <p className="text-4xl font-bold text-red-600">
-              {minutes}:{seconds.toString().padStart(2, "0")}
-            </p>
-            <p className="text-red-700 text-sm mt-2">Depois desse tempo, o preço volta ao normal!</p>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex gap-4">
-            <button
-              onClick={onAccept}
-              className="flex-1 bg-gradient-to-r from-primary to-secondary text-white py-4 rounded-lg font-bold text-lg hover:shadow-lg transition transform hover:scale-105 flex items-center justify-center gap-2"
+        <ul className="mt-8 flex flex-col gap-3 px-7 sm:px-10">
+          {includes.map((item, i) => (
+            <li
+              key={item}
+              className="animate-fade-up flex items-start gap-3 text-ink"
+              style={{ animationDelay: `${i * 60}ms` }}
             >
-              <Zap size={20} />
-              Aproveitar Oferta Agora!
-            </button>
-            <button
-              onClick={onDecline}
-              className="flex-1 border-2 border-gray-300 text-gray-700 py-4 rounded-lg font-bold hover:bg-gray-50 transition"
-            >
-              Recusar
-            </button>
-          </div>
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold-soft">
+                <Check size={12} className="text-gold" strokeWidth={3} />
+              </span>
+              <span className="text-[15px] leading-relaxed">{item}</span>
+            </li>
+          ))}
+        </ul>
 
-          {/* Trust Signal */}
-          <div className="text-center mt-6">
-            <p className="text-sm text-gray-600">
-              ✅ 100% seguro | 🔒 Pagamento criptografado | 📱 PIX aceito
+        <div
+          className={`mx-7 mt-8 flex items-center justify-center gap-3 rounded-lg border px-5 py-4 sm:mx-10 ${
+            expired
+              ? "border-line bg-cream/60"
+              : "border-rose-soft bg-rose-soft/30"
+          }`}
+        >
+          <Clock
+            size={17}
+            className={expired ? "text-muted" : "animate-pulse-soft text-rose"}
+          />
+          {expired ? (
+            <p className="text-sm text-muted">
+              Tempo esgotado — confirme a disponibilidade com a doutora.
             </p>
-          </div>
+          ) : (
+            <p className="text-sm text-ink">
+              Reservada por mais{" "}
+              <span className="tabular font-medium text-rose-deep">
+                {minutes}:{String(seconds).padStart(2, "0")}
+              </span>
+            </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3 px-7 pb-8 pt-6 sm:px-10">
+          <button onClick={onAccept} className="btn-primary w-full">
+            Quero garantir minha condição
+          </button>
+          <button onClick={onDecline} className="btn-ghost w-full">
+            Voltar para a conversa
+          </button>
+
+          <p className="mt-2 flex items-center justify-center gap-2 text-center text-xs text-muted">
+            <ShieldCheck size={14} className="text-gold" />
+            Garantia de {clinic.guaranteeDays} dias · Pagamento via PIX
+          </p>
         </div>
       </div>
     </div>

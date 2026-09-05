@@ -5,9 +5,21 @@ export default function Document() {
     <Html lang="pt-BR">
       <Head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="description" content="STRIAÉ - Solução para estrias, celulite e flacidez" />
-        <title>STRIAÉ - Seu Caminho para a Pele Perfeita</title>
+        <meta
+          name="description"
+          content="STRIAÉ — tratamento para estrias, celulite e flacidez com acompanhamento profissional."
+        />
+        <meta name="theme-color" content="#FBF7F2" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Jost:wght@300;400;500;600&display=swap"
+          rel="stylesheet"
+        />
       </Head>
       <body>
         <Main />

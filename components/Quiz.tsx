@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ArrowRight, Check, ShieldCheck } from "lucide-react";
+import DoctorAvatar from "./DoctorAvatar";
+import { clinic } from "../config/clinic";
 
 interface QuizProps {
   onComplete: (answers: any) => void;
@@ -7,172 +9,219 @@ interface QuizProps {
 
 const questions = [
   {
-    id: 1,
-    question: "Qual é o seu principal problema de pele?",
+    id: "issues",
+    recapLabel: "Principal queixa",
+    question: "Qual é a sua principal queixa hoje?",
     options: [
       { label: "Estrias", value: "estrias" },
       { label: "Celulite", value: "celulite" },
       { label: "Flacidez", value: "flacidez" },
-      { label: "Combinação dos três", value: "todos" },
+      { label: "As três combinadas", value: "estrias, celulite e flacidez" },
     ],
   },
   {
-    id: 2,
-    question: "Há quanto tempo você tem esse problema?",
+    id: "duration",
+    recapLabel: "Tempo de convivência",
+    question: "Há quanto tempo você convive com isso?",
     options: [
-      { label: "Menos de 1 ano", value: "novo" },
-      { label: "1-3 anos", value: "medio" },
-      { label: "Mais de 3 anos", value: "cronico" },
+      { label: "Menos de 1 ano", value: "menos de 1 ano" },
+      { label: "Entre 1 e 3 anos", value: "de 1 a 3 anos" },
+      { label: "Mais de 3 anos", value: "mais de 3 anos" },
     ],
   },
   {
-    id: 3,
-    question: "Você já tentou algum tratamento antes?",
+    id: "treatments",
+    recapLabel: "Tratamentos anteriores",
+    question: "Você já tentou tratar antes?",
     options: [
-      { label: "Sim, vários", value: "varios" },
-      { label: "Sim, alguns", value: "alguns" },
-      { label: "Não, é a primeira vez", value: "primeira" },
+      { label: "Sim, vários tratamentos", value: "vários tratamentos sem resultado" },
+      { label: "Sim, alguns", value: "alguns tratamentos" },
+      { label: "Não, seria a primeira vez", value: "nenhum tratamento ainda" },
     ],
   },
   {
-    id: 4,
-    question: "Qual é o seu principal objetivo?",
+    id: "goals",
+    recapLabel: "Seu objetivo",
+    question: "O que você mais deseja alcançar?",
     options: [
-      { label: "Reduzir a aparência", value: "reduzir" },
-      { label: "Eliminar completamente", value: "eliminar" },
-      { label: "Melhorar a autoestima", value: "autoestima" },
+      { label: "Reduzir bastante a aparência", value: "reduzir a aparência" },
+      { label: "O resultado mais completo possível", value: "o resultado mais completo" },
+      { label: "Voltar a me sentir bem comigo", value: "recuperar a autoestima" },
     ],
   },
   {
-    id: 5,
-    question: "Como você se sente em relação à sua pele?",
+    id: "sentiment",
+    recapLabel: "Como você se sente",
+    question: "Como você se sente com a sua pele hoje?",
     options: [
-      { label: "Muito insatisfeita", value: "muito_insatisfeita" },
-      { label: "Insatisfeita", value: "insatisfeita" },
-      { label: "Razoável", value: "razoavel" },
+      { label: "Muito incomodada, evito me expor", value: "muito incomodada" },
+      { label: "Incomodada com frequência", value: "incomodada" },
+      { label: "Convivo, mas gostaria de melhorar", value: "disposta a melhorar" },
     ],
   },
 ];
 
 export default function Quiz({ onComplete }: QuizProps) {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<any>({});
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [showRecap, setShowRecap] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [error, setError] = useState("");
 
   const handleAnswer = (value: string) => {
-    const newAnswers = { ...answers };
-    const key = `q${questions[currentQuestion].id}`;
-    newAnswers[key] = value;
-    setAnswers(newAnswers);
+    const next = { ...answers, [questions[step].id]: value };
+    setAnswers(next);
 
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
+    if (step < questions.length - 1) {
+      setStep(step + 1);
     } else {
-      setShowForm(true);
+      setShowRecap(true);
     }
   };
 
   const handleSubmit = () => {
-    if (name && email) {
-      onComplete({
-        ...answers,
-        name,
-        email,
-        issues: answers.q1,
-        duration: answers.q2,
-        treatments: answers.q3,
-        goals: answers.q4,
-        sentiment: answers.q5,
-      });
-    } else {
-      alert("Por favor, preencha seu nome e email");
-    }
+    if (!name.trim()) return setError("Por favor, informe seu nome.");
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError("Informe um e-mail válido.");
+    setError("");
+    onComplete({ ...answers, name: name.trim(), email: email.trim() });
   };
 
-  if (showForm) {
+  const labelFor = (q: (typeof questions)[number]) =>
+    q.options.find((o) => o.value === answers[q.id])?.label ?? "—";
+
+  if (showRecap) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto">
-        <div className="mb-8">
-          <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-            <div className="bg-primary h-2 rounded-full w-full"></div>
-          </div>
-          <h2 className="text-2xl font-bold text-primary mb-4">Excelente! Você tem o perfil perfeito!</h2>
-          <p className="text-gray-600 mb-8">
-            Com base em suas respostas, você é uma candidata ideal para o método STRIAÉ. Agora vamos conhecer você melhor!
+      <div className="animate-fade-up rounded-card border border-line bg-surface p-7 shadow-soft sm:p-10">
+        <div className="flex flex-col items-center text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gold-soft">
+            <Check size={22} className="text-gold" strokeWidth={2.5} />
+          </span>
+          <p className="eyebrow mt-5">Avaliação concluída</p>
+          <h2 className="mt-3 font-display text-3xl text-ink sm:text-4xl">
+            Você tem o perfil indicado para o Método {clinic.name}
+          </h2>
+          <p className="mt-4 max-w-md text-muted">
+            Analisamos suas respostas e seu caso se encaixa no protocolo que
+            desenvolvemos. Veja o resumo abaixo.
           </p>
         </div>
 
-        <div className="space-y-4 mb-8">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Seu Nome</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Digite seu nome completo"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-            />
-          </div>
+        <dl className="mt-9 divide-y divide-line overflow-hidden rounded-lg border border-line">
+          {questions.map((q, i) => (
+            <div
+              key={q.id}
+              className="animate-fade-up flex flex-col gap-1 bg-cream/40 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+              style={{ animationDelay: `${i * 70}ms` }}
+            >
+              <dt className="eyebrow">{q.recapLabel}</dt>
+              <dd className="font-medium text-ink sm:text-right">{labelFor(q)}</dd>
+            </div>
+          ))}
+        </dl>
 
+        <div className="mt-9 flex items-start gap-4 rounded-lg bg-rose-soft/40 p-5">
+          <DoctorAvatar size={52} />
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Seu Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Digite seu email"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-            />
+            <p className="font-medium text-ink">
+              {clinic.doctor.name} vai conversar com você agora
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              Uma conversa rápida para entender seu caso antes de indicar o
+              protocolo. Sem compromisso.
+            </p>
           </div>
         </div>
 
-        <button
-          onClick={handleSubmit}
-          className="w-full bg-gradient-to-r from-primary to-secondary text-white py-4 rounded-lg font-bold text-lg hover:shadow-lg transition transform hover:scale-105"
-        >
-          Conversar Agora com a Doutora
-          <ChevronRight className="inline ml-2" size={20} />
-        </button>
+        <div className="mt-7 flex flex-col gap-4">
+          <div>
+            <label htmlFor="name" className="eyebrow mb-2 block">
+              Seu nome
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Como podemos te chamar?"
+              className="field"
+            />
+          </div>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
-          ⏰ Vagas limitadas - Não demore muito!
-        </p>
+          <div>
+            <label htmlFor="email" className="eyebrow mb-2 block">
+              Seu e-mail
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              placeholder="nome@email.com"
+              className="field"
+            />
+          </div>
+
+          {error && <p className="text-sm text-rose-deep">{error}</p>}
+
+          <button onClick={handleSubmit} className="btn-primary w-full">
+            Conversar agora com a doutora
+            <ArrowRight size={18} />
+          </button>
+
+          <p className="flex items-center justify-center gap-2 text-xs text-muted">
+            <ShieldCheck size={14} className="text-gold" />
+            Seus dados são usados apenas para o seu atendimento.
+          </p>
+        </div>
       </div>
     );
   }
 
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
+  const current = questions[step];
+  const progress = ((step + 1) / questions.length) * 100;
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto">
-      <div className="mb-8">
-        <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
-          <div
-            className="bg-primary h-2 rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          ></div>
-        </div>
-        <p className="text-sm text-gray-500">
-          Pergunta {currentQuestion + 1} de {questions.length}
-        </p>
+    <div className="animate-fade-up rounded-card border border-line bg-surface p-7 shadow-soft sm:p-10">
+      <div className="flex items-center justify-between">
+        <span className="eyebrow">
+          Pergunta {step + 1} de {questions.length}
+        </span>
+        <span className="eyebrow tabular">{Math.round(progress)}%</span>
       </div>
 
-      <h2 className="text-2xl font-bold text-gray-800 mb-8">
-        {questions[currentQuestion].question}
-      </h2>
+      <div className="mt-3 h-px w-full bg-line">
+        <div
+          className="h-px bg-gold transition-all duration-700 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
 
-      <div className="space-y-3">
-        {questions[currentQuestion].options.map((option) => (
-          <button
-            key={option.value}
-            onClick={() => handleAnswer(option.value)}
-            className="w-full text-left p-4 border-2 border-gray-200 rounded-lg hover:border-primary hover:bg-primary hover:bg-opacity-5 transition font-medium text-gray-700 hover:text-primary"
-          >
-            {option.label}
-          </button>
-        ))}
+      <div key={step} className="animate-slide-right">
+        <h2 className="mt-8 font-display text-3xl leading-snug text-ink sm:text-4xl">
+          {current.question}
+        </h2>
+
+        <div className="mt-8 flex flex-col gap-3">
+          {current.options.map((option, i) => (
+            <button
+              key={option.value}
+              onClick={() => handleAnswer(option.value)}
+              className="group animate-fade-up flex items-center justify-between gap-4 rounded-lg
+                         border border-line bg-white px-5 py-4 text-left text-ink
+                         transition-all duration-200
+                         hover:-translate-y-0.5 hover:border-rose hover:shadow-soft"
+              style={{ animationDelay: `${i * 60}ms`, minHeight: "56px" }}
+            >
+              <span className="font-medium">{option.label}</span>
+              <ArrowRight
+                size={18}
+                className="shrink-0 text-line transition-colors duration-200 group-hover:text-rose"
+              />
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

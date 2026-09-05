@@ -1,6 +1,15 @@
 import { useState } from "react";
-import { Copy, Check, Phone, Mail } from "lucide-react";
+import {
+  Copy,
+  Check,
+  ShieldCheck,
+  Lock,
+  AlertTriangle,
+  MessageCircle,
+} from "lucide-react";
 import axios from "axios";
+import DoctorAvatar from "./DoctorAvatar";
+import { clinic, finalPrice, savings, brl } from "../config/clinic";
 
 interface PaymentFormProps {
   userProfile: any;
@@ -8,277 +17,275 @@ interface PaymentFormProps {
 
 export default function PaymentForm({ userProfile }: PaymentFormProps) {
   const [step, setStep] = useState<"form" | "pix" | "success">("form");
-  const [pixData, setPixData] = useState<any>(null);
+  const [pix, setPix] = useState<any>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    phone: "",
-    address: "",
-    city: "",
-    state: "",
-  });
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({ phone: "", address: "", city: "", state: "" });
 
-  const handleInputChange = (e: any) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  const update = (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleGeneratePix = async () => {
-    if (!formData.phone || !formData.address || !formData.city || !formData.state) {
-      alert("Por favor, preencha todos os campos");
-      return;
+  const handleGenerate = async () => {
+    if (!form.phone || !form.address || !form.city || !form.state) {
+      return setError("Preencha todos os campos para continuar.");
     }
-
+    setError("");
     setLoading(true);
 
     try {
-      const response = await axios.post("/api/payment", {
-        userProfile: { ...userProfile, ...formData },
-        amount: 720, // 40% discount price
+      const { data } = await axios.post("/api/payment", {
+        userProfile: { ...userProfile, ...form },
+        amount: finalPrice,
       });
-
-      setPixData(response.data.pix);
+      setPix(data.pix);
       setStep("pix");
-    } catch (error) {
-      console.error("Error generating PIX:", error);
-      alert("Erro ao gerar PIX. Tente novamente!");
+    } catch {
+      setError("Não foi possível gerar o PIX. Tente novamente.");
     } finally {
       setLoading(false);
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyKey = async () => {
+    try {
+      await navigator.clipboard.writeText(pix.pixKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError("Copie a chave manualmente.");
+    }
   };
 
   if (step === "form") {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto">
-        <h2 className="text-3xl font-bold text-primary mb-2">Finalize Seu Pedido</h2>
-        <p className="text-gray-600 mb-8">Preencha seus dados para gerar o PIX de pagamento</p>
+      <div className="animate-fade-up rounded-card border border-line bg-surface p-7 shadow-soft sm:p-10">
+        <p className="eyebrow">Última etapa</p>
+        <h2 className="mt-3 font-display text-3xl text-ink sm:text-4xl">
+          Finalize sua reserva
+        </h2>
 
-        <div className="space-y-6 mb-8">
-          {/* Display user info */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm text-gray-600">Cliente</p>
-            <p className="font-bold text-gray-800">{userProfile.name}</p>
-            <p className="text-sm text-gray-600">{userProfile.email}</p>
+        <div className="mt-8 rounded-lg bg-cream/70 p-6">
+          <div className="flex items-center justify-between text-sm text-muted">
+            <span>Protocolo completo</span>
+            <span className="line-through">{brl(clinic.price.original)}</span>
           </div>
-
-          {/* Phone */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              <Phone size={16} className="inline mr-2" />
-              Telefone/WhatsApp
-            </label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              placeholder="(11) 9 9999-9999"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-            />
+          <div className="mt-2 flex items-center justify-between text-sm">
+            <span className="text-muted">
+              Desconto de {clinic.price.discountPercent}%
+            </span>
+            <span className="font-medium text-rose-deep">− {brl(savings)}</span>
           </div>
-
-          {/* Address */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Endereço</label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              placeholder="Rua, número, complemento"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-            />
-          </div>
-
-          {/* City and State */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Cidade</label>
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleInputChange}
-                placeholder="São Paulo"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Estado</label>
-              <input
-                type="text"
-                name="state"
-                value={formData.state}
-                onChange={handleInputChange}
-                placeholder="SP"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-              />
-            </div>
-          </div>
-
-          {/* Price Summary */}
-          <div className="bg-primary bg-opacity-10 border-2 border-primary rounded-lg p-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-700">Preço original:</span>
-              <span className="text-gray-700 line-through">R$ 1.200,00</span>
-            </div>
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-700">Desconto (40%):</span>
-              <span className="text-red-600 font-bold">-R$ 480,00</span>
-            </div>
-            <div className="flex justify-between items-center text-lg font-bold text-primary border-t border-primary border-opacity-20 pt-2">
-              <span>Total a pagar:</span>
-              <span>R$ 720,00</span>
-            </div>
+          <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
+            <span className="font-medium text-ink">Total</span>
+            <span className="font-display text-3xl text-ink">{brl(finalPrice)}</span>
           </div>
         </div>
 
-        <button
-          onClick={handleGeneratePix}
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-primary to-secondary text-white py-4 rounded-lg font-bold text-lg hover:shadow-lg transition transform hover:scale-105 disabled:opacity-50"
-        >
-          {loading ? "Gerando PIX..." : "Gerar PIX para Pagamento"}
-        </button>
+        <div className="mt-8 flex flex-col gap-4">
+          <div className="rounded-lg border border-line px-5 py-4">
+            <p className="eyebrow">Cliente</p>
+            <p className="mt-1 font-medium text-ink">{userProfile?.name}</p>
+            <p className="text-sm text-muted">{userProfile?.email}</p>
+          </div>
 
-        <p className="text-center text-sm text-gray-500 mt-4">
-          ✅ Todos os seus dados estão seguros e criptografados
-        </p>
+          <div>
+            <label htmlFor="phone" className="eyebrow mb-2 block">
+              Telefone / WhatsApp
+            </label>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              value={form.phone}
+              onChange={update}
+              placeholder="(11) 99999-9999"
+              className="field"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="address" className="eyebrow mb-2 block">
+              Endereço
+            </label>
+            <input
+              id="address"
+              name="address"
+              type="text"
+              value={form.address}
+              onChange={update}
+              placeholder="Rua, número e complemento"
+              className="field"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <label htmlFor="city" className="eyebrow mb-2 block">
+                Cidade
+              </label>
+              <input
+                id="city"
+                name="city"
+                type="text"
+                value={form.city}
+                onChange={update}
+                placeholder="São Paulo"
+                className="field"
+              />
+            </div>
+            <div>
+              <label htmlFor="state" className="eyebrow mb-2 block">
+                UF
+              </label>
+              <input
+                id="state"
+                name="state"
+                type="text"
+                maxLength={2}
+                value={form.state}
+                onChange={update}
+                placeholder="SP"
+                className="field uppercase"
+              />
+            </div>
+          </div>
+
+          {error && <p className="text-sm text-rose-deep">{error}</p>}
+
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="btn-primary w-full"
+          >
+            {loading ? "Gerando PIX..." : "Gerar PIX e reservar minha vaga"}
+          </button>
+
+          <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-6">
+            <span className="flex items-center gap-2 text-xs text-muted">
+              <Lock size={13} className="text-gold" />
+              Dados criptografados
+            </span>
+            <span className="flex items-center gap-2 text-xs text-muted">
+              <ShieldCheck size={13} className="text-gold" />
+              Garantia de {clinic.guaranteeDays} dias
+            </span>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (step === "pix") {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-            <span className="text-4xl">✓</span>
-          </div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">PIX Gerado com Sucesso!</h2>
-          <p className="text-gray-600">Escaneie o QR code ou use a chave de pagamento abaixo</p>
+      <div className="animate-fade-up rounded-card border border-line bg-surface p-7 shadow-soft sm:p-10">
+        <div className="text-center">
+          <p className="eyebrow">Pagamento</p>
+          <h2 className="mt-3 font-display text-3xl text-ink sm:text-4xl">
+            Seu PIX está pronto
+          </h2>
+          <p className="mt-3 text-muted">
+            Copie a chave abaixo e pague no app do seu banco.
+          </p>
         </div>
 
-        {/* PIX QR Code Placeholder */}
-        <div className="bg-gray-100 rounded-lg p-8 mb-8 text-center">
-          <div className="bg-white inline-block p-4 rounded-lg border-4 border-primary">
-            <div className="w-64 h-64 bg-gradient-to-br from-primary to-secondary rounded-lg flex items-center justify-center text-white">
-              <div className="text-center">
-                <p className="text-sm mb-2">QR CODE</p>
-                <p className="text-xs">{pixData?.pixKey}</p>
-              </div>
-            </div>
-          </div>
+        {/* Remova este bloco assim que o provedor de PIX real estiver integrado. */}
+        <div className="mt-7 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-5 py-4">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0 text-amber-600" />
+          <p className="text-sm leading-relaxed text-amber-900">
+            <strong className="font-medium">Ambiente de teste.</strong> A
+            integração de pagamento ainda não está ativa — esta chave não recebe
+            transferências. Não divulgue esta página até concluir a integração.
+          </p>
         </div>
 
-        {/* Payment Details */}
-        <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-6 mb-6">
-          <h3 className="font-bold text-gray-800 mb-4">Dados da Transferência:</h3>
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs text-gray-600 mb-1">Chave PIX:</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 bg-white p-2 rounded border border-gray-300 text-sm font-mono">
-                  {pixData?.pixKey}
-                </code>
-                <button
-                  onClick={() => copyToClipboard(pixData?.pixKey)}
-                  className="bg-primary text-white p-2 rounded hover:bg-opacity-90 transition"
-                >
-                  {copied ? <Check size={18} /> : <Copy size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-600 mb-1">Valor:</p>
-              <p className="font-bold text-lg text-gray-800">R$ {pixData?.amount.toLocaleString("pt-BR")}</p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-600 mb-1">Referência:</p>
-              <p className="font-mono text-sm text-gray-800">{pixData?.reference}</p>
-            </div>
-
-            <div>
-              <p className="text-xs text-gray-600 mb-1">Expira em:</p>
-              <p className="text-sm text-red-600 font-bold">1 hora</p>
-            </div>
-          </div>
-        </div>
-
-        {/* After Payment Instructions */}
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8">
-          <p className="font-bold text-yellow-800 mb-2">📲 Próximos Passos:</p>
-          <ol className="text-sm text-yellow-700 space-y-1 list-decimal list-inside">
-            <li>Faça a transferência PIX agora mesmo</li>
-            <li>Envie o comprovante para nosso WhatsApp</li>
-            <li>Marque sua primeira sessão com a doutora</li>
-          </ol>
-        </div>
-
-        {/* Contact */}
-        <div className="bg-primary bg-opacity-10 rounded-lg p-6 mb-8">
-          <h3 className="font-bold text-gray-800 mb-4">Dúvidas? Fale Conosco:</h3>
-          <div className="space-y-2">
-            <button className="w-full flex items-center gap-2 bg-green-500 text-white py-3 rounded-lg hover:bg-green-600 transition font-bold">
-              <Phone size={18} />
-              Chamar no WhatsApp
-            </button>
-            <button className="w-full flex items-center gap-2 bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 transition font-bold">
-              <Mail size={18} />
-              Enviar Email
+        <div className="mt-7 rounded-lg bg-cream/70 p-6">
+          <p className="eyebrow">Chave PIX</p>
+          <div className="mt-2 flex items-center gap-3">
+            <code className="flex-1 overflow-x-auto rounded-lg border border-line bg-white px-4 py-3 font-mono text-sm text-ink">
+              {pix?.pixKey}
+            </code>
+            <button
+              onClick={copyKey}
+              aria-label="Copiar chave PIX"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg
+                         bg-rose text-white transition-colors hover:bg-rose-deep"
+            >
+              {copied ? <Check size={18} /> : <Copy size={18} />}
             </button>
           </div>
+
+          <dl className="mt-5 flex flex-col gap-3 border-t border-line pt-5 text-sm">
+            <div className="flex justify-between">
+              <dt className="text-muted">Valor</dt>
+              <dd className="font-medium text-ink">{brl(pix?.amount ?? finalPrice)}</dd>
+            </div>
+            <div className="flex justify-between">
+              <dt className="text-muted">Referência</dt>
+              <dd className="font-mono text-xs text-ink">{pix?.reference}</dd>
+            </div>
+          </dl>
         </div>
 
-        <button
-          onClick={() => setStep("success")}
-          className="w-full bg-primary text-white py-4 rounded-lg font-bold text-lg hover:bg-opacity-90 transition"
-        >
-          Já Efetuei o Pagamento
+        <ol className="mt-7 flex flex-col gap-4">
+          {[
+            "Copie a chave e faça o PIX no app do seu banco",
+            "Envie o comprovante para a nossa equipe",
+            "Agende sua primeira sessão com a doutora",
+          ].map((text, i) => (
+            <li key={i} className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gold-soft font-display text-sm text-gold">
+                {i + 1}
+              </span>
+              <span className="text-[15px] leading-relaxed text-ink">{text}</span>
+            </li>
+          ))}
+        </ol>
+
+        <button onClick={() => setStep("success")} className="btn-primary mt-8 w-full">
+          Já efetuei o pagamento
         </button>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto text-center">
-      <div className="bg-green-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
-        <span className="text-6xl">🎉</span>
-      </div>
-      <h2 className="text-3xl font-bold text-gray-800 mb-4">Parabéns!</h2>
-      <p className="text-gray-600 text-lg mb-8">
-        Sua compra foi realizada com sucesso! Você receberá um email de confirmação em breve.
+    <div className="animate-fade-up rounded-card border border-line bg-surface p-7 text-center shadow-soft sm:p-12">
+      <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-gold-soft">
+        <Check size={28} className="text-gold" strokeWidth={2.5} />
+      </span>
+
+      <h2 className="mt-6 font-display text-3xl text-ink sm:text-4xl">
+        Recebemos sua solicitação
+      </h2>
+      <p className="mx-auto mt-4 max-w-md text-muted">
+        Assim que o pagamento for confirmado, nossa equipe entra em contato para
+        agendar sua primeira sessão.
       </p>
 
-      <div className="bg-green-50 border-2 border-green-300 rounded-lg p-6 mb-8">
-        <p className="text-sm text-gray-600 mb-2">Referência do Pedido:</p>
-        <p className="font-bold text-2xl text-green-600">{pixData?.reference}</p>
+      <div className="mt-8 rounded-lg bg-cream/70 px-6 py-5">
+        <p className="eyebrow">Referência do pedido</p>
+        <p className="mt-2 font-mono text-lg text-ink">{pix?.reference}</p>
       </div>
 
-      <div className="space-y-4">
-        <div className="bg-gray-100 p-6 rounded-lg">
-          <p className="text-sm text-gray-600 mb-2">Próximo Passo:</p>
-          <p className="font-bold text-gray-800 mb-3">Nossa equipe entrará em contato em breve para agendar sua primeira sessão!</p>
-          <p className="text-gray-600 text-sm">Fique atento ao seu email e WhatsApp</p>
-        </div>
+      <div className="mt-8 flex items-center justify-center gap-4 rounded-lg bg-rose-soft/40 p-5 text-left">
+        <DoctorAvatar size={48} />
+        <p className="text-sm leading-relaxed text-ink">
+          {clinic.doctor.name} vai acompanhar seu protocolo pessoalmente.
+        </p>
+      </div>
 
+      {clinic.whatsapp && (
         <a
-          href="https://wa.me/5511999999999?text=Olá! Realizei a compra do pacote STRIAÉ e gostaria de agendar minha primeira sessão."
+          href={`https://wa.me/${clinic.whatsapp}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="block w-full bg-green-500 text-white py-4 rounded-lg font-bold hover:bg-green-600 transition"
+          className="btn-primary mt-6 w-full !text-white"
         >
-          💬 Conversar no WhatsApp
+          <MessageCircle size={18} />
+          Falar no WhatsApp
         </a>
-      </div>
+      )}
     </div>
   );
 }
