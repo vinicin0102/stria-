@@ -13,7 +13,7 @@ que a cliente clica em gerar o código.
    paymentVideo: {
      src: "/video/doutora-pagamento.mp4",
      poster: "/video/capa.jpg",
-     title: "Um recado da Dra. Sarah",
+     title: "Um recado da Dra. Julia",
      description: "Assista enquanto faz o pagamento.",
    },
    ```

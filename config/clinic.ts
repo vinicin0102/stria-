@@ -6,7 +6,7 @@ export const clinic = {
   tagline: "Dermatologia estética avançada",
 
   doctor: {
-    name: "Dra. Sarah",
+    name: "Dra. Julia",
     title: "Dermatologista",
     // Coloque a foto em public/ e aponte aqui (ex.: "/doutora.jpg").
     // Vazio = monograma com as iniciais, sem requisição quebrada.
