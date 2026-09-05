@@ -46,6 +46,7 @@ export default function ChatWindow({ userProfile }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const offerShown = useRef(false);
   const pendingPix = useRef<any>(null);
+  const paidShown = useRef(false);
 
   useEffect(() => {
     setMessages([
@@ -176,9 +177,10 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
     setPayError("");
 
     try {
+      // O valor não vai daqui de propósito: quem define é o servidor, a
+      // partir da configuração. Preço vindo do cliente é preço editável.
       const { data: res } = await axios.post("/api/payment", {
         userProfile: { ...userProfile, ...data },
-        amount: finalPrice,
       });
 
       // O formulário também se desfaz: o PIX nasce do mesmo lugar.
@@ -191,6 +193,20 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
     } finally {
       setPaying(false);
     }
+  };
+
+  // Disparado quando a consulta à IronPay confirma o pagamento.
+  const handlePaid = async () => {
+    if (paidShown.current) return;
+    paidShown.current = true;
+
+    await sleep(600);
+    await say({
+      kind: "doctor",
+      content: `Pagamento confirmado! Acabei de liberar o seu acesso ao ${clinic.name}.
+
+Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me chamar.`,
+    });
   };
 
   const handleCheckoutDissolved = async () => {
@@ -236,7 +252,7 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
           tela e ainda cabe o teclado quando o campo recebe foco. */}
       <div
         ref={scrollRef}
-        className="h-[58vh] min-h-[20rem] overflow-y-auto px-3 py-4 sm:h-[28rem] sm:px-6 sm:py-6"
+        className="h-[58vh] min-h-[20rem] overflow-y-auto overflow-x-hidden px-3 py-4 sm:h-[28rem] sm:px-6 sm:py-6"
       >
         <div className="flex flex-col gap-4 sm:gap-5">
           {messages.map((msg, i) => {
@@ -321,7 +337,11 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
               );
             }
 
-            return bubble(i, <ChatPix pix={msg.pix} />, true);
+            return bubble(
+              i,
+              <ChatPix pix={msg.pix} onPaid={handlePaid} />,
+              true
+            );
           })}
 
           {loading && (

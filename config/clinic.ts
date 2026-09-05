@@ -19,8 +19,18 @@ export const clinic = {
   whatsapp: "",
 
   price: {
-    original: 1200,
+    // O valor final precisa bater com o preço da oferta no IronPay,
+    // hoje 2700 centavos. 45 menos 40% dá exatamente 27.
+    original: 45,
     discountPercent: 40,
+  },
+
+  // Identificadores da conta IronPay. O token fica só em variável de
+  // ambiente — nunca neste arquivo, que vai para o repositório.
+  ironpay: {
+    offerHash: "4mom34ozin",
+    productHash: "aup67qyv90",
+    productTitle: "APP STRIAÉ",
   },
 
   guaranteeDays: 7,
