@@ -34,9 +34,10 @@ Responda de forma natural e conversacional. Mantenha a conversa breve (máximo 2
         "Content-Type": "application/json",
         "x-api-key": ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
+        "anthropic-workspace-id": process.env.ANTHROPIC_WORKSPACE_ID || "wrkspc_01TFvp8D4tj7wKcRDWb5eH6X",
       },
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
+        model: "claude-3-sonnet-20240229",
         max_tokens: 300,
         system: systemPrompt,
         messages: [
