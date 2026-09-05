@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+const MODEL = "claude-sonnet-5";
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -30,48 +32,49 @@ Perfil da cliente:
 
 Responda de forma natural e conversacional. Mantenha a conversa breve (máximo 2-3 linhas).`;
 
-    const headers: any = {
+    const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
     };
 
-    const workspaceId = process.env.ANTHROPIC_WORKSPACE_ID;
-    if (workspaceId) {
-      headers["anthropic-workspace-id"] = workspaceId;
+    // Só necessário para chaves de organização não vinculadas a uma workspace.
+    if (process.env.ANTHROPIC_WORKSPACE_ID) {
+      headers["anthropic-workspace-id"] = process.env.ANTHROPIC_WORKSPACE_ID;
     }
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers,
       body: JSON.stringify({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 300,
+        model: MODEL,
+        max_tokens: 500,
         system: systemPrompt,
-        messages: [
-          {
-            role: "user",
-            content: message,
-          },
-        ],
+        messages: [{ role: "user", content: message }],
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`API Error (${response.status}):`, errorText);
-      return res.status(response.status).json({ error: errorText });
+      console.error(`Anthropic API error (${response.status}):`, errorText);
+      // 502: a falha é da API externa, não desta rota. Repassar o status original
+      // faz o browser reportar "404 em /api/chat", escondendo a causa real.
+      return res.status(502).json({ error: "Falha ao contatar o serviço de IA" });
     }
 
     const data = await response.json();
+    const text = data.content?.find((b: any) => b.type === "text")?.text;
 
-    if (!data.content || !data.content[0] || !data.content[0].text) {
-      console.error("Invalid response format:", data);
-      return res.status(500).json({ error: "Invalid response from API" });
+    if (!text) {
+      console.error(
+        `Empty Anthropic response (stop_reason: ${data.stop_reason}):`,
+        JSON.stringify(data).slice(0, 500)
+      );
+      return res.status(502).json({ error: "O serviço de IA não retornou uma resposta" });
     }
 
     res.status(200).json({
-      message: data.content[0].text,
+      message: text.trim(),
       messageCount: (messageCount || 0) + 1,
     });
   } catch (error: any) {
