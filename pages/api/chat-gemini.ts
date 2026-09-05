@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
+const MODEL = "gemini-3.6-flash";
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
@@ -31,48 +33,42 @@ Perfil da cliente:
 Responda de forma natural e conversacional. Mantenha a conversa breve (máximo 2-3 linhas).`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system_instruction: {
-            parts: {
-              text: systemPrompt,
-            },
-          },
-          contents: {
-            parts: {
-              text: message,
-            },
-          },
-          generationConfig: {
-            maxOutputTokens: 300,
-            temperature: 0.7,
-          },
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: message }] }],
+          // O modelo gasta ~500 tokens de raciocínio interno antes de escrever;
+          // um limite baixo corta a resposta no meio da frase.
+          generationConfig: { maxOutputTokens: 1000, temperature: 0.7 },
         }),
       }
     );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Gemini API Error (${response.status}):`, errorText);
-      return res.status(response.status).json({ error: errorText });
+      console.error(`Gemini API error (${response.status}):`, errorText);
+      // 502: a falha é da API externa, não desta rota. Repassar o status original
+      // faz o browser reportar "404 em /api/chat-gemini", escondendo a causa real.
+      return res.status(502).json({ error: "Falha ao contatar o serviço de IA" });
     }
 
     const data = await response.json();
+    const candidate = data.candidates?.[0];
+    const text = candidate?.content?.parts?.[0]?.text;
 
-    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-      console.error("Invalid response format:", data);
-      return res.status(500).json({ error: "Invalid response from Gemini API" });
+    if (!text) {
+      console.error(
+        `Empty Gemini response (finishReason: ${candidate?.finishReason}):`,
+        JSON.stringify(data).slice(0, 500)
+      );
+      return res.status(502).json({ error: "O serviço de IA não retornou uma resposta" });
     }
 
-    const assistantMessage = data.candidates[0].content.parts[0].text;
-
     res.status(200).json({
-      message: assistantMessage,
+      message: text.trim(),
       messageCount: (messageCount || 0) + 1,
     });
   } catch (error: any) {
