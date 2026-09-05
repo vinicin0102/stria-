@@ -25,6 +25,10 @@ export const clinic = {
     discountPercent: 40,
   },
 
+  // ID do pixel do Facebook (só números, como 1234567890123456).
+  // Vazio = nenhum script de rastreamento é carregado.
+  facebookPixelId: "624262646647561",
+
   // Identificadores da conta IronPay. O token fica só em variável de
   // ambiente — nunca neste arquivo, que vai para o repositório.
   ironpay: {

@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Check, Clock, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
 import ScratchCard from "./ScratchCard";
 import { clinic, finalPrice, savings, brl } from "../config/clinic";
+import { track, purchaseParams } from "../lib/pixel";
 
 interface InlineOfferProps {
   onAccept: () => void;
@@ -19,11 +20,21 @@ export default function InlineOffer({ onAccept }: InlineOfferProps) {
   const [armed, setArmed] = useState(false);
   const [timeLeft, setTimeLeft] = useState(OFFER_SECONDS);
 
+  // A oferta chegou à tela. O guarda evita contar duas vezes caso o
+  // componente remonte — e o StrictMode faz exatamente isso em dev.
+  const viewSent = useRef(false);
+  useEffect(() => {
+    if (viewSent.current) return;
+    viewSent.current = true;
+    track("ViewContent", purchaseParams);
+  }, []);
+
   // Ao revelar, o botão de comprar é montado bem embaixo do dedo que
   // acabou de raspar, e o clique daquele mesmo toque cairia nele. Uma
   // pausa curta evita comprar sem querer com um único toque.
   useEffect(() => {
     if (!revealed) return;
+    track("OfferRevealed", { desconto: clinic.price.discountPercent });
     const t = setTimeout(() => setArmed(true), 600);
     return () => clearTimeout(t);
   }, [revealed]);

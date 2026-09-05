@@ -8,7 +8,8 @@ import ChatCheckout from "./ChatCheckout";
 import ChatPix from "./ChatPix";
 import ChatVideo from "./ChatVideo";
 import Disintegrate from "./Disintegrate";
-import { clinic, finalPrice } from "../config/clinic";
+import { clinic } from "../config/clinic";
+import { track, purchaseParams } from "../lib/pixel";
 
 interface ChatWindowProps {
   userProfile: any;
@@ -150,6 +151,7 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
   // A oferta se desfaz e os campos nascem no mesmo lugar: trocar de tela
   // aqui quebraria o embalo de quem acabou de decidir comprar.
   const handleAcceptOffer = () => {
+    track("InitiateCheckout", purchaseParams);
     setMessages((prev) =>
       prev.map((m) => (m.kind === "offer" ? { ...m, dissolving: true } : m))
     );
@@ -199,6 +201,11 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
   const handlePaid = async () => {
     if (paidShown.current) return;
     paidShown.current = true;
+
+    // Mesmo eventID do lado servidor: o Meta junta os dois em uma conversão.
+    track("Purchase", purchaseParams, {
+      eventID: `purchase_${pendingPix.current?.hash}`,
+    });
 
     await sleep(600);
     await say({

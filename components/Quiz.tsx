@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowRight, Check, ShieldCheck } from "lucide-react";
 import DoctorAvatar from "./DoctorAvatar";
 import { clinic } from "../config/clinic";
+import { track } from "../lib/pixel";
 
 interface QuizProps {
   onComplete: (answers: any) => void;
@@ -69,12 +70,15 @@ export default function Quiz({ onComplete }: QuizProps) {
   const [error, setError] = useState("");
 
   const handleAnswer = (value: string) => {
+    if (step === 0) track("QuizStart");
+
     const next = { ...answers, [questions[step].id]: value };
     setAnswers(next);
 
     if (step < questions.length - 1) {
       setStep(step + 1);
     } else {
+      track("QuizComplete", { queixa: next.issues });
       setShowRecap(true);
     }
   };
@@ -82,6 +86,8 @@ export default function Quiz({ onComplete }: QuizProps) {
   const handleSubmit = () => {
     if (!name.trim()) return setError("Por favor, informe seu nome.");
     setError("");
+    // Deixou o nome e entrou na conversa: é o lead do funil.
+    track("Lead", { content_name: clinic.name });
     onComplete({ ...answers, name: name.trim() });
   };
 

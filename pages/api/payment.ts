@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import QRCode from "qrcode";
 import { clinic, finalPrice } from "../../config/clinic";
+import { sendCapiEvent } from "../../lib/capi";
 
 const API = "https://api.ironpayapp.com.br/api/public/v1";
 
@@ -8,6 +9,14 @@ const API = "https://api.ironpayapp.com.br/api/public/v1";
 const AMOUNT_CENTS = Math.round(finalPrice * 100);
 
 const onlyDigits = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+
+// A IronPay precisa de uma URL pública para o aviso de pagamento, e ela
+// muda entre preview e produção — daí ler do próprio pedido.
+const siteUrl = (req: NextApiRequest) => {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  const proto = (req.headers["x-forwarded-proto"] as string) || "https";
+  return `${proto}://${req.headers.host}`;
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -55,6 +64,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ],
         expire_in_days: 1,
         transaction_origin: "api",
+        // A IronPay avisa aqui quando o pagamento cai, e é esse aviso que
+        // garante o Purchase no Meta mesmo se a cliente fechar a página.
+        postback_url: `${siteUrl(req)}/api/ironpay-webhook`,
       }),
     });
 
@@ -77,6 +89,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       margin: 1,
       width: 320,
       color: { dark: "#2B2422", light: "#FFFFFF" },
+    });
+
+    // Aguardado de propósito: em função serverless o processo pode ser
+    // encerrado assim que a resposta sai, e o evento se perderia.
+    await sendCapiEvent({
+      eventName: "AddPaymentInfo",
+      eventId: `addpayment_${data.hash}`,
+      email,
+      phone,
+      value: AMOUNT_CENTS / 100,
+      sourceUrl: siteUrl(req),
     });
 
     res.status(200).json({
