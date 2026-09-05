@@ -46,8 +46,13 @@ export const clinic = {
   // de clientes suas, com autorização de uso de imagem assinada.
   // Vazio = o carrossel não aparece e a mensagem não menciona resultados.
   socialProof: {
-    // Vídeo tem prioridade: se estiver preenchido, o carrossel não aparece.
-    video: "/video/video.mp4.mp4",
+    // Vídeos têm prioridade: se houver algum, o carrossel não aparece.
+    // Dois ficam lado a lado no computador e empilhados no celular.
+    // Use sempre .mp4 (H.264/AAC): .mov falha em parte dos Androids.
+    videos: [
+      "/video/video.mp4.mp4",
+      "/video/Conversor MP4 - FreeConvert.com(1).mov",
+    ],
     // Imagem de capa mostrada antes do play. Sem ela o player abre num
     // quadro preto — vale exportar um frame do próprio vídeo.
     poster: "",
@@ -59,8 +64,8 @@ export const clinic = {
     //   { src: "/resultados/resultado-3.jpg" },
     // ],
 
-    // Frase da doutora logo antes do vídeo ou das imagens.
-    intro: "Gravei este vídeo pra você entender melhor:",
+    // Frase da doutora logo antes dos vídeos ou das imagens.
+    intro: "Olha esses dois vídeos incríveis abaixo:",
   },
 
   // Depoimentos reais de clientes. Vazio = a seção não aparece.

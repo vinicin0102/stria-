@@ -25,9 +25,8 @@ const MESSAGES_BEFORE_OFFER = 3;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const hasProof = Boolean(
-  clinic.socialProof.video || clinic.socialProof.images.length
-);
+const videos = clinic.socialProof.videos;
+const hasProof = Boolean(videos.length || clinic.socialProof.images.length);
 
 // A IA já emenda dizendo que vai explicar; repetir "deixa eu te explicar"
 // aqui soaria como disco arranhado.
@@ -251,18 +250,32 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
             if (msg.kind === "proof") {
               return bubble(
                 i,
-                clinic.socialProof.video ? (
-                  <video
-                    src={clinic.socialProof.video}
-                    poster={clinic.socialProof.poster || undefined}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    className="w-full max-w-[280px] rounded-2xl rounded-bl-sm border border-line bg-ink"
-                  />
+                videos.length ? (
+                  <div
+                    className={
+                      videos.length > 1
+                        ? "grid grid-cols-1 gap-2 sm:grid-cols-2"
+                        : "max-w-[280px]"
+                    }
+                  >
+                    {videos.map((src) => (
+                      <video
+                        key={src}
+                        // Os nomes vêm de upload e podem ter espaço e
+                        // parêntese, que quebram o src sem codificar.
+                        src={encodeURI(src)}
+                        poster={clinic.socialProof.poster || undefined}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full rounded-2xl border border-line bg-ink"
+                      />
+                    ))}
+                  </div>
                 ) : (
                   <ProofCarousel images={clinic.socialProof.images} />
-                )
+                ),
+                videos.length > 1
               );
             }
 
