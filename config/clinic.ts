@@ -46,24 +46,21 @@ export const clinic = {
   // de clientes suas, com autorização de uso de imagem assinada.
   // Vazio = o carrossel não aparece e a mensagem não menciona resultados.
   socialProof: {
+    // Vídeo tem prioridade: se estiver preenchido, o carrossel não aparece.
+    video: "/video/video.mp4.mp4",
+    // Imagem de capa mostrada antes do play. Sem ela o player abre num
+    // quadro preto — vale exportar um frame do próprio vídeo.
+    poster: "",
+
     images: [] as { src: string; caption?: string }[],
     // images: [
     //   { src: "/resultados/resultado-1.jpg" },
     //   { src: "/resultados/resultado-2.jpg" },
     //   { src: "/resultados/resultado-3.jpg" },
     // ],
-    intro: "",
-  },
 
-  // Vídeo exibido na tela do PIX, logo depois de a chave ser gerada.
-  // Coloque o arquivo em public/video/ e aponte aqui.
-  // Vazio = a seção não aparece.
-  paymentVideo: {
-    src: "",
-    // Imagem de capa mostrada antes do play (opcional).
-    poster: "",
-    title: "",
-    description: "",
+    // Frase da doutora logo antes do vídeo ou das imagens.
+    intro: "Gravei este vídeo pra você entender melhor:",
   },
 
   // Depoimentos reais de clientes. Vazio = a seção não aparece.

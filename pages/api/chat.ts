@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { message, userProfile, messageCount, history } = req.body;
+    const { message, userProfile, messageCount, history, isFinalTurn } = req.body;
     const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!message) {
@@ -64,7 +64,15 @@ COMO RESPONDER:
 - Não repita o que você já falou antes na conversa.
 - Termine com uma pergunta curta só quando fizer sentido.
 - Sem emoji.
-- Não prometa prazo para as estrias sumirem nem garanta resultado. Fale do que o método faz, não de milagre.`;
+- Não prometa prazo para as estrias sumirem nem garanta resultado. Fale do que o método faz, não de milagre.${
+      isFinalTurn
+        ? `
+
+ATENÇÃO — ESTA É SUA ÚLTIMA MENSAGEM:
+Logo depois dela você vai explicar o método e apresentar uma condição especial, e a cliente não terá como responder.
+Então NÃO termine com pergunta e NÃO peça nenhuma informação. Feche o raciocínio numa frase que puxe naturalmente para a explicação do método.`
+        : ""
+    }`;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",

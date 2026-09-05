@@ -66,7 +66,6 @@ export default function Quiz({ onComplete }: QuizProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [showRecap, setShowRecap] = useState(false);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
 
   const handleAnswer = (value: string) => {
@@ -82,9 +81,8 @@ export default function Quiz({ onComplete }: QuizProps) {
 
   const handleSubmit = () => {
     if (!name.trim()) return setError("Por favor, informe seu nome.");
-    if (!/^\S+@\S+\.\S+$/.test(email)) return setError("Informe um e-mail válido.");
     setError("");
-    onComplete({ ...answers, name: name.trim(), email: email.trim() });
+    onComplete({ ...answers, name: name.trim() });
   };
 
   const labelFor = (q: (typeof questions)[number]) =>
@@ -143,22 +141,8 @@ export default function Quiz({ onComplete }: QuizProps) {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Como podemos te chamar?"
-              className="field"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="email" className="eyebrow mb-2 block">
-              Seu e-mail
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-              placeholder="nome@email.com"
+              placeholder="Como podemos te chamar?"
               className="field"
             />
           </div>

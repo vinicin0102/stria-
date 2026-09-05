@@ -3,10 +3,9 @@ import Head from "next/head";
 import { ShieldCheck, Stethoscope, Lock } from "lucide-react";
 import Quiz from "../components/Quiz";
 import ChatWindow from "../components/ChatWindow";
-import PaymentForm from "../components/PaymentForm";
 import { clinic } from "../config/clinic";
 
-type Stage = "quiz" | "chat" | "payment";
+type Stage = "quiz" | "chat";
 
 export default function Home() {
   const [stage, setStage] = useState<Stage>("quiz");
@@ -44,14 +43,8 @@ export default function Home() {
         <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-10 sm:py-14">
           {stage === "quiz" && <Quiz onComplete={handleQuizComplete} />}
 
-          {stage === "chat" && (
-            <ChatWindow
-              userProfile={userProfile}
-              onAccept={() => setStage("payment")}
-            />
-          )}
-
-          {stage === "payment" && <PaymentForm userProfile={userProfile} />}
+          {/* Oferta, dados e PIX acontecem dentro da conversa. */}
+          {stage === "chat" && <ChatWindow userProfile={userProfile} />}
         </main>
 
         <footer className="border-t border-line bg-cream-deep/50">

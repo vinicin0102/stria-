@@ -4,37 +4,43 @@ import axios from "axios";
 import DoctorAvatar from "./DoctorAvatar";
 import InlineOffer from "./InlineOffer";
 import ProofCarousel from "./ProofCarousel";
-import { clinic } from "../config/clinic";
+import ChatCheckout from "./ChatCheckout";
+import ChatPix from "./ChatPix";
+import Disintegrate from "./Disintegrate";
+import { clinic, finalPrice } from "../config/clinic";
 
 interface ChatWindowProps {
   userProfile: any;
-  onAccept: () => void;
 }
 
 type Message =
   | { kind: "doctor"; content: string }
   | { kind: "user"; content: string }
   | { kind: "proof" }
-  | { kind: "offer" };
+  | { kind: "offer"; dissolving?: boolean }
+  | { kind: "checkout" }
+  | { kind: "pix"; pix: any };
 
 const MESSAGES_BEFORE_OFFER = 3;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const hasProof = clinic.socialProof.images.length > 0;
+const hasProof = Boolean(
+  clinic.socialProof.video || clinic.socialProof.images.length
+);
 
-const closingMessage = `Ótimo. Deixa eu te explicar como o ${clinic.name} funciona.
-
-Não é sessão em clínica: é um método que você faz em casa, uma rotina diária com cuidados dermatológicos que quase ninguém conhece. Eu te acompanho durante o processo.${
-  hasProof
-    ? `\n\n${clinic.socialProof.intro || "Aproveitando, olha alguns resultados que acabei de receber:"}`
-    : ""
+// A IA já emenda dizendo que vai explicar; repetir "deixa eu te explicar"
+// aqui soaria como disco arranhado.
+const closingMessage = `Na prática é assim: nada de sessão em clínica. É uma rotina diária que você faz em casa, com cuidados dermatológicos que quase ninguém conhece, e eu te acompanho durante o processo.${
+  hasProof && clinic.socialProof.intro ? `\n\n${clinic.socialProof.intro}` : ""
 }`;
 
-export default function ChatWindow({ userProfile, onAccept }: ChatWindowProps) {
+export default function ChatWindow({ userProfile }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState("");
   const [sentCount, setSentCount] = useState(0);
   const [closed, setClosed] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -89,8 +95,9 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
 
     // Sem o histórico, cada resposta sai desconectada do que ela contou.
     const history = messages
-      .filter((m): m is Extract<Message, { content: string }> =>
-        m.kind === "doctor" || m.kind === "user"
+      .filter(
+        (m): m is Extract<Message, { content: string }> =>
+          m.kind === "doctor" || m.kind === "user"
       )
       .map((m) => ({
         role: m.kind === "doctor" ? ("assistant" as const) : ("user" as const),
@@ -104,6 +111,9 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
         userProfile,
         messageCount: sentCount,
         history,
+        // Sem este aviso ela encerra com uma pergunta que a oferta
+        // atropela em seguida, e a cliente nunca chega a responder.
+        isFinalTurn: sentCount + 1 >= MESSAGES_BEFORE_OFFER,
       });
       setMessages((prev) => [...prev, { kind: "doctor", content: data.message }]);
       answered = true;
@@ -128,6 +138,72 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
       await runClosingSequence();
     }
   };
+
+  // A oferta se desfaz e os campos nascem no mesmo lugar: trocar de tela
+  // aqui quebraria o embalo de quem acabou de decidir comprar.
+  const handleAcceptOffer = () => {
+    setMessages((prev) =>
+      prev.map((m) => (m.kind === "offer" ? { ...m, dissolving: true } : m))
+    );
+  };
+
+  const handleDissolved = async () => {
+    setMessages((prev) => prev.filter((m) => m.kind !== "offer"));
+
+    await sleep(200);
+    setLoading(true);
+    await sleep(900);
+    setLoading(false);
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        kind: "doctor",
+        content:
+          "Perfeito! Só preciso de três informações para liberar o seu acesso.",
+      },
+      { kind: "checkout" },
+    ]);
+  };
+
+  const handleCheckout = async (data: {
+    email: string;
+    phone: string;
+    document: string;
+  }) => {
+    setPaying(true);
+    setPayError("");
+
+    try {
+      const { data: res } = await axios.post("/api/payment", {
+        userProfile: { ...userProfile, ...data },
+        amount: finalPrice,
+      });
+
+      setMessages((prev) => prev.filter((m) => m.kind !== "checkout"));
+      await sleep(150);
+      setLoading(true);
+      await sleep(700);
+      setLoading(false);
+
+      setMessages((prev) => [
+        ...prev,
+        { kind: "doctor", content: "Pronto, aqui está o seu PIX." },
+        { kind: "pix", pix: res.pix },
+      ]);
+    } catch {
+      setPayError("Não consegui gerar o PIX agora. Tente de novo.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const bubble = (key: number, node: React.ReactNode, wide = false) => (
+    <div key={key} className="animate-slide-right flex items-end gap-3">
+      <span className="w-8 shrink-0" />
+      <div className={`w-full ${wide ? "max-w-[92%]" : "max-w-[82%]"}`}>{node}</div>
+    </div>
+  );
 
   return (
     <div className="animate-fade-up overflow-hidden rounded-card border border-line bg-surface shadow-soft">
@@ -173,24 +249,53 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
             }
 
             if (msg.kind === "proof") {
+              return bubble(
+                i,
+                clinic.socialProof.video ? (
+                  <video
+                    src={clinic.socialProof.video}
+                    poster={clinic.socialProof.poster || undefined}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="w-full max-w-[280px] rounded-2xl rounded-bl-sm border border-line bg-ink"
+                  />
+                ) : (
+                  <ProofCarousel images={clinic.socialProof.images} />
+                )
+              );
+            }
+
+            if (msg.kind === "offer") {
               return (
-                <div key={i} className="animate-slide-right flex items-end gap-3">
+                <div key={i} className="flex items-end gap-3">
                   <span className="w-8 shrink-0" />
-                  <div className="w-full max-w-[82%]">
-                    <ProofCarousel images={clinic.socialProof.images} />
+                  <div className="w-full max-w-[92%]">
+                    <Disintegrate
+                      active={Boolean(msg.dissolving)}
+                      onDone={handleDissolved}
+                    >
+                      <InlineOffer onAccept={handleAcceptOffer} />
+                    </Disintegrate>
                   </div>
                 </div>
               );
             }
 
-            return (
-              <div key={i} className="flex items-end gap-3">
-                <span className="w-8 shrink-0" />
-                <div className="w-full max-w-[92%]">
-                  <InlineOffer onAccept={onAccept} />
-                </div>
-              </div>
-            );
+            if (msg.kind === "checkout") {
+              return bubble(
+                i,
+                <>
+                  <ChatCheckout onSubmit={handleCheckout} loading={paying} />
+                  {payError && (
+                    <p className="mt-2 text-sm text-rose-deep">{payError}</p>
+                  )}
+                </>,
+                true
+              );
+            }
+
+            return bubble(i, <ChatPix pix={msg.pix} />, true);
           })}
 
           {loading && (
@@ -218,9 +323,7 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder={
-              closed
-                ? "Garanta sua condição acima para continuar"
-                : "Escreva sua mensagem..."
+              closed ? "Continue pela condição acima" : "Escreva sua mensagem..."
             }
             disabled={loading || closed}
             aria-label="Mensagem para a doutora"
