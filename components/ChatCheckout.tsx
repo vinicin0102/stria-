@@ -3,9 +3,16 @@ import { Lock, ArrowRight } from "lucide-react";
 import { priceOf, brl, PlanId } from "../config/clinic";
 
 interface ChatCheckoutProps {
-  onSubmit: (data: { email: string; phone: string; document: string }) => void;
+  onSubmit: (data: {
+    email: string;
+    phone: string;
+    document: string;
+    name?: string;
+  }) => void;
   loading: boolean;
   planId: PlanId;
+  // Quem sai antes do quiz nunca informou o nome, e a cobrança exige.
+  askName?: boolean;
 }
 
 const onlyDigits = (v: string) => v.replace(/\D/g, "");
@@ -29,13 +36,18 @@ export default function ChatCheckout({
   onSubmit,
   loading,
   planId,
+  askName = false,
 }: ChatCheckoutProps) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [document, setDocument] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = () => {
+    if (askName && name.trim().length < 2) {
+      return setError("Informe seu nome.");
+    }
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       return setError("Confira o e-mail: é por ele que você recebe o método.");
     }
@@ -46,7 +58,12 @@ export default function ChatCheckout({
       return setError("O CPF precisa ter 11 dígitos.");
     }
     setError("");
-    onSubmit({ email, phone, document: onlyDigits(document) });
+    onSubmit({
+      email,
+      phone,
+      document: onlyDigits(document),
+      ...(askName ? { name: name.trim() } : {}),
+    });
   };
 
   return (
@@ -57,6 +74,23 @@ export default function ChatCheckout({
       </div>
 
       <div className="flex flex-col gap-3 p-4">
+        {askName && (
+          <div>
+            <label htmlFor="co-name" className="eyebrow mb-1.5 block">
+              Seu nome
+            </label>
+            <input
+              id="co-name"
+              type="text"
+              autoComplete="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Como podemos te chamar?"
+              className="field"
+            />
+          </div>
+        )}
+
         <div>
           <label htmlFor="co-email" className="eyebrow mb-1.5 block">
             E-mail

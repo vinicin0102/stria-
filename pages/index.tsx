@@ -27,7 +27,7 @@ export default function Home() {
       </Head>
 
       {/* Vale em qualquer etapa: quiz, conversa ou pagamento. */}
-      <ExitIntent onStay={() => setRescue(true)} />
+      <ExitIntent userProfile={userProfile} onStay={() => setRescue(true)} />
 
       <div className="flex min-h-screen flex-col bg-cream">
         <header className="border-b border-line bg-cream/90 backdrop-blur-sm">
