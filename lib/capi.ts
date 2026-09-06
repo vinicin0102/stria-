@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { clinic } from "../config/clinic";
+import { clinic, PlanId } from "../config/clinic";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -18,6 +18,7 @@ interface CapiEvent {
   phone?: string;
   value?: number;
   sourceUrl?: string;
+  planId?: PlanId;
 }
 
 export async function sendCapiEvent(evt: CapiEvent): Promise<boolean> {
@@ -25,6 +26,7 @@ export async function sendCapiEvent(evt: CapiEvent): Promise<boolean> {
   const pixel = clinic.facebookPixelId;
   if (!token || !pixel) return false;
 
+  const produto = clinic.plans[evt.planId ?? "padrao"];
   const userData: Record<string, string[]> = {};
   if (evt.email) userData.em = [hash(evt.email)];
   // Telefone precisa do DDI para casar com a base do Meta.
@@ -45,8 +47,8 @@ export async function sendCapiEvent(evt: CapiEvent): Promise<boolean> {
         custom_data: {
           currency: "BRL",
           ...(evt.value != null ? { value: evt.value } : {}),
-          content_name: clinic.ironpay.productTitle,
-          content_ids: [clinic.ironpay.productHash],
+          content_name: produto.productTitle,
+          content_ids: [produto.productHash],
           content_type: "product",
         },
       },

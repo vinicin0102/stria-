@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Check, Clock, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
 import ScratchCard from "./ScratchCard";
-import { clinic, finalPrice, savings, brl } from "../config/clinic";
+import { clinic, priceOf, savingsOf, brl, PlanId } from "../config/clinic";
 import { track, purchaseParams } from "../lib/pixel";
 
 interface InlineOfferProps {
   onAccept: () => void;
+  planId: PlanId;
 }
 
 const OFFER_SECONDS = 5 * 60;
@@ -15,7 +16,13 @@ const includes = [
   `Garantia de satisfação de ${clinic.guaranteeDays} dias`,
 ];
 
-export default function InlineOffer({ onAccept }: InlineOfferProps) {
+export default function InlineOffer({ onAccept, planId }: InlineOfferProps) {
+  const preco = priceOf(planId);
+  const economia = savingsOf(planId);
+  // Calculado do preço real: no plano de resgate o desconto é maior que
+  // os 40% padrão, e anunciar 40% cobrando 19,90 seria incoerente.
+  const percentual = Math.round((economia / clinic.price.original) * 100);
+
   const [revealed, setRevealed] = useState(false);
   const [armed, setArmed] = useState(false);
   const [timeLeft, setTimeLeft] = useState(OFFER_SECONDS);
@@ -26,18 +33,18 @@ export default function InlineOffer({ onAccept }: InlineOfferProps) {
   useEffect(() => {
     if (viewSent.current) return;
     viewSent.current = true;
-    track("ViewContent", purchaseParams);
-  }, []);
+    track("ViewContent", purchaseParams(planId));
+  }, [planId]);
 
   // Ao revelar, o botão de comprar é montado bem embaixo do dedo que
   // acabou de raspar, e o clique daquele mesmo toque cairia nele. Uma
   // pausa curta evita comprar sem querer com um único toque.
   useEffect(() => {
     if (!revealed) return;
-    track("OfferRevealed", { desconto: clinic.price.discountPercent });
+    track("OfferRevealed", { desconto: percentual });
     const t = setTimeout(() => setArmed(true), 600);
     return () => clearTimeout(t);
-  }, [revealed]);
+  }, [revealed, percentual]);
 
   // O relógio só começa quando ela descobre o desconto.
   useEffect(() => {
@@ -71,7 +78,7 @@ export default function InlineOffer({ onAccept }: InlineOfferProps) {
         <ScratchCard revealed={revealed} onReveal={() => setRevealed(true)}>
           <div className="text-center">
             <p className="font-display text-6xl leading-none text-rose">
-              {clinic.price.discountPercent}%
+              {percentual}%
             </p>
             <p className="eyebrow mt-1">de desconto</p>
           </div>
@@ -80,21 +87,19 @@ export default function InlineOffer({ onAccept }: InlineOfferProps) {
         {revealed && (
           <div className="animate-fade-up mt-5">
             <div className="rounded-lg bg-cream/70 px-5 py-5 text-center">
-              <p className="eyebrow">Protocolo completo {clinic.name}</p>
+              <p className="eyebrow">Método completo {clinic.name}</p>
               <div className="mt-2 flex items-center justify-center gap-3">
                 <span className="text-muted line-through">
                   {brl(clinic.price.original)}
                 </span>
                 <span className="rounded-full bg-rose px-2.5 py-0.5 text-xs font-medium text-white">
-                  −{clinic.price.discountPercent}%
+                  −{percentual}%
                 </span>
               </div>
-              <p className="mt-2 font-display text-4xl text-ink">
-                {brl(finalPrice)}
-              </p>
+              <p className="mt-2 font-display text-4xl text-ink">{brl(preco)}</p>
               <p className="mt-2 text-sm text-muted">
                 Você economiza{" "}
-                <span className="font-medium text-rose-deep">{brl(savings)}</span>
+                <span className="font-medium text-rose-deep">{brl(economia)}</span>
               </p>
             </div>
 

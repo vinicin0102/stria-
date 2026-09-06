@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Lock, ArrowRight } from "lucide-react";
-import { finalPrice, brl } from "../config/clinic";
+import { priceOf, brl, PlanId } from "../config/clinic";
 
 interface ChatCheckoutProps {
   onSubmit: (data: { email: string; phone: string; document: string }) => void;
   loading: boolean;
+  planId: PlanId;
 }
 
 const onlyDigits = (v: string) => v.replace(/\D/g, "");
@@ -24,7 +25,11 @@ const maskDocument = (v: string) => {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 };
 
-export default function ChatCheckout({ onSubmit, loading }: ChatCheckoutProps) {
+export default function ChatCheckout({
+  onSubmit,
+  loading,
+  planId,
+}: ChatCheckoutProps) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [document, setDocument] = useState("");
@@ -48,7 +53,7 @@ export default function ChatCheckout({ onSubmit, loading }: ChatCheckoutProps) {
     <div className="animate-fade-up overflow-hidden rounded-2xl rounded-bl-sm border border-gold/40 bg-white">
       <div className="flex items-center justify-between border-b border-gold/25 bg-gold-soft/40 px-4 py-2.5">
         <span className="eyebrow !text-ink">Seus dados</span>
-        <span className="font-display text-lg text-ink">{brl(finalPrice)}</span>
+        <span className="font-display text-lg text-ink">{brl(priceOf(planId))}</span>
       </div>
 
       <div className="flex flex-col gap-3 p-4">

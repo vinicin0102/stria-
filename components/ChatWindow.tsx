@@ -8,11 +8,12 @@ import ChatCheckout from "./ChatCheckout";
 import ChatPix from "./ChatPix";
 import ChatVideo from "./ChatVideo";
 import Disintegrate from "./Disintegrate";
-import { clinic } from "../config/clinic";
+import { clinic, planFor } from "../config/clinic";
 import { track, purchaseParams } from "../lib/pixel";
 
 interface ChatWindowProps {
   userProfile: any;
+  rescue: boolean;
 }
 
 type Message =
@@ -36,7 +37,8 @@ const closingMessage = `Na prática é assim: nada de sessão em clínica. É um
   hasProof && clinic.socialProof.intro ? `\n\n${clinic.socialProof.intro}` : ""
 }`;
 
-export default function ChatWindow({ userProfile }: ChatWindowProps) {
+export default function ChatWindow({ userProfile, rescue }: ChatWindowProps) {
+  const planId = planFor(rescue);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -151,7 +153,7 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
   // A oferta se desfaz e os campos nascem no mesmo lugar: trocar de tela
   // aqui quebraria o embalo de quem acabou de decidir comprar.
   const handleAcceptOffer = () => {
-    track("InitiateCheckout", purchaseParams);
+    track("InitiateCheckout", purchaseParams(planId));
     setMessages((prev) =>
       prev.map((m) => (m.kind === "offer" ? { ...m, dissolving: true } : m))
     );
@@ -183,6 +185,7 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
       // partir da configuração. Preço vindo do cliente é preço editável.
       const { data: res } = await axios.post("/api/payment", {
         userProfile: { ...userProfile, ...data },
+        plan: planId,
       });
 
       // O formulário também se desfaz: o PIX nasce do mesmo lugar.
@@ -203,7 +206,7 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
     paidShown.current = true;
 
     // Mesmo eventID do lado servidor: o Meta junta os dois em uma conversão.
-    track("Purchase", purchaseParams, {
+    track("Purchase", purchaseParams(planId), {
       eventID: `purchase_${pendingPix.current?.hash}`,
     });
 
@@ -321,7 +324,7 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
                       active={Boolean(msg.dissolving)}
                       onDone={handleDissolved}
                     >
-                      <InlineOffer onAccept={handleAcceptOffer} />
+                      <InlineOffer onAccept={handleAcceptOffer} planId={planId} />
                     </Disintegrate>
                   </div>
                 </div>
@@ -335,7 +338,11 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
                   active={Boolean(msg.dissolving)}
                   onDone={handleCheckoutDissolved}
                 >
-                  <ChatCheckout onSubmit={handleCheckout} loading={paying} />
+                  <ChatCheckout
+                    onSubmit={handleCheckout}
+                    loading={paying}
+                    planId={planId}
+                  />
                   {payError && (
                     <p className="mt-2 text-sm text-rose-deep">{payError}</p>
                   )}

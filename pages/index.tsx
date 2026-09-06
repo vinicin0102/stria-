@@ -2,6 +2,7 @@ import { useState } from "react";
 import Head from "next/head";
 import Quiz from "../components/Quiz";
 import ChatWindow from "../components/ChatWindow";
+import ExitIntent from "../components/ExitIntent";
 import { clinic } from "../config/clinic";
 
 type Stage = "quiz" | "chat";
@@ -9,6 +10,8 @@ type Stage = "quiz" | "chat";
 export default function Home() {
   const [stage, setStage] = useState<Stage>("quiz");
   const [userProfile, setUserProfile] = useState<any>(null);
+  // Destravado se ela aceitar ficar no aviso de saída; vale até o fim.
+  const [rescue, setRescue] = useState(false);
 
   const handleQuizComplete = (answers: any) => {
     setUserProfile(answers);
@@ -22,6 +25,9 @@ export default function Home() {
             separadores de nó (<!-- -->) para dentro do título. */}
         <title>{`${clinic.name} — Avaliação personalizada da sua pele`}</title>
       </Head>
+
+      {/* Vale em qualquer etapa: quiz, conversa ou pagamento. */}
+      <ExitIntent onStay={() => setRescue(true)} />
 
       <div className="flex min-h-screen flex-col bg-cream">
         <header className="border-b border-line bg-cream/90 backdrop-blur-sm">
@@ -43,7 +49,9 @@ export default function Home() {
           {stage === "quiz" && <Quiz onComplete={handleQuizComplete} />}
 
           {/* Oferta, dados e PIX acontecem dentro da conversa. */}
-          {stage === "chat" && <ChatWindow userProfile={userProfile} />}
+          {stage === "chat" && (
+            <ChatWindow userProfile={userProfile} rescue={rescue} />
+          )}
         </main>
 
         <footer className="px-5 py-6">

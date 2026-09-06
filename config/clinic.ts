@@ -18,24 +18,34 @@ export const clinic = {
   // Só números, com DDI. Ex.: "5511999999999". Vazio = botão oculto.
   whatsapp: "",
 
+  // Valor riscado, usado como referência nos dois planos.
   price: {
-    // O valor final precisa bater com o preço da oferta no IronPay,
-    // hoje 2700 centavos. 45 menos 40% dá exatamente 27.
     original: 45,
     discountPercent: 40,
+  },
+
+  // Cada plano aponta para uma oferta real do IronPay. O preço aqui tem
+  // que bater com o da oferta lá, senão a cobrança sai errada.
+  // "resgate" é liberado quando ela decide ficar no aviso de saída — só
+  // prometemos desconto extra porque ele existe de verdade.
+  plans: {
+    padrao: {
+      offerHash: "4mom34ozin",
+      productHash: "aup67qyv90",
+      productTitle: "APP STRIAÉ",
+      price: 27,
+    },
+    resgate: {
+      offerHash: "0oahyxn15j",
+      productHash: "ybcfqettui",
+      productTitle: "STRIAÉ",
+      price: 19.9,
+    },
   },
 
   // ID do pixel do Facebook (só números, como 1234567890123456).
   // Vazio = nenhum script de rastreamento é carregado.
   facebookPixelId: "624262646647561",
-
-  // Identificadores da conta IronPay. O token fica só em variável de
-  // ambiente — nunca neste arquivo, que vai para o repositório.
-  ironpay: {
-    offerHash: "4mom34ozin",
-    productHash: "aup67qyv90",
-    productTitle: "APP STRIAÉ",
-  },
 
   guaranteeDays: 7,
 
@@ -87,11 +97,18 @@ export const clinic = {
   testimonials: [] as { name: string; text: string; result: string }[],
 };
 
-export const finalPrice = Math.round(
-  clinic.price.original * (1 - clinic.price.discountPercent / 100)
-);
+export type PlanId = keyof typeof clinic.plans;
 
-export const savings = clinic.price.original - finalPrice;
+export const planFor = (rescue: boolean): PlanId => (rescue ? "resgate" : "padrao");
+
+export const plan = (id: PlanId) => clinic.plans[id];
+
+export const priceOf = (id: PlanId) => clinic.plans[id].price;
+
+export const savingsOf = (id: PlanId) =>
+  clinic.price.original - clinic.plans[id].price;
+
+export const finalPrice = clinic.plans.padrao.price;
 
 export const brl = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });

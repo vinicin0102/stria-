@@ -1,12 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import QRCode from "qrcode";
-import { clinic, finalPrice } from "../../config/clinic";
+import { clinic, PlanId } from "../../config/clinic";
 import { sendCapiEvent } from "../../lib/capi";
 
 const API = "https://api.ironpayapp.com.br/api/public/v1";
 
-// A IronPay trabalha em centavos; o funil, em reais.
-const AMOUNT_CENTS = Math.round(finalPrice * 100);
+// O cliente escolhe entre dois planos conhecidos, nunca um valor. Preço
+// que chega pelo navegador é preço que o comprador edita no DevTools.
+const resolvePlan = (raw: unknown): PlanId =>
+  raw === "resgate" ? "resgate" : "padrao";
 
 const onlyDigits = (v: unknown) => String(v ?? "").replace(/\D/g, "");
 
@@ -30,7 +32,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { userProfile } = req.body ?? {};
+    const { userProfile, plan: rawPlan } = req.body ?? {};
+    const planId = resolvePlan(rawPlan);
+    const chosen = clinic.plans[planId];
+    const amountCents = Math.round(chosen.price * 100);
     const name = String(userProfile?.name ?? "").trim();
     const email = String(userProfile?.email ?? "").trim();
     const phone = onlyDigits(userProfile?.phone);
@@ -47,16 +52,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({
-        amount: AMOUNT_CENTS,
-        offer_hash: clinic.ironpay.offerHash,
+        amount: amountCents,
+        offer_hash: chosen.offerHash,
         payment_method: "pix",
         customer: { name, email, phone_number: phone, document },
         cart: [
           {
-            product_hash: clinic.ironpay.productHash,
-            title: clinic.ironpay.productTitle,
+            // Cada oferta pertence a um produto: misturar os dois hashes
+            // faz a IronPay recusar a transação.
+            product_hash: chosen.productHash,
+            title: chosen.productTitle,
             cover: null,
-            price: AMOUNT_CENTS,
+            price: amountCents,
             quantity: 1,
             operation_type: 1,
             tangible: false,
@@ -98,8 +105,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       eventId: `addpayment_${data.hash}`,
       email,
       phone,
-      value: AMOUNT_CENTS / 100,
+      value: amountCents / 100,
       sourceUrl: siteUrl(req),
+      planId,
     });
 
     res.status(200).json({
@@ -107,7 +115,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         code: pixCode,
         qrImage,
         hash: data.hash,
-        amount: (data.amount ?? AMOUNT_CENTS) / 100,
+        amount: (data.amount ?? amountCents) / 100,
       },
     });
   } catch (error: any) {

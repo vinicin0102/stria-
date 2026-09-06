@@ -1,4 +1,4 @@
-import { clinic, finalPrice } from "../config/clinic";
+import { clinic, PlanId } from "../config/clinic";
 
 declare global {
   interface Window {
@@ -29,10 +29,15 @@ export function track(
   window.fbq(verbo, event, params ?? {}, options);
 }
 
-export const purchaseParams = {
-  value: finalPrice,
-  currency: "BRL",
-  content_name: clinic.ironpay.productTitle,
-  content_ids: [clinic.ironpay.productHash],
-  content_type: "product",
+// O valor precisa acompanhar o plano: reportar R$ 27 numa venda de
+// R$ 19,90 estraga o ROAS que o Meta usa para otimizar a campanha.
+export const purchaseParams = (planId: PlanId = "padrao") => {
+  const p = clinic.plans[planId];
+  return {
+    value: p.price,
+    currency: "BRL",
+    content_name: p.productTitle,
+    content_ids: [p.productHash],
+    content_type: "product",
+  };
 };
