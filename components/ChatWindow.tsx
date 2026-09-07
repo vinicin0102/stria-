@@ -63,7 +63,7 @@ export default function ChatWindow() {
 
   // Cada bloco entra com pausa e indicador de digitação. Despejar tudo de
   // uma vez faz a conversa parecer script automático em vez de pessoa.
-  const say = async (message: Message, think = 1800) => {
+  const say = async (message: Message, think = 2200) => {
     setLoading(true);
     await sleep(think);
     setLoading(false);
@@ -76,7 +76,7 @@ export default function ChatWindow() {
     abriu.current = true;
 
     (async () => {
-      await sleep(600);
+      await sleep(800);
       await say(
         {
           kind: "doctor",
@@ -84,18 +84,18 @@ export default function ChatWindow() {
             hasVsl ? `\n\n${clinic.vsl.intro}` : ""
           }`,
         },
-        1200
+        1600
       );
 
       if (hasVsl) {
-        await sleep(600);
+        await sleep(900);
         setMessages((prev) => [...prev, { kind: "vsl" }]);
       }
 
-      await sleep(1400);
+      await sleep(2000);
       await say(
         { kind: "doctor", content: "Antes de começarmos, como você se chama?" },
-        1400
+        1800
       );
     })();
   }, []);
@@ -110,16 +110,16 @@ export default function ChatWindow() {
     offerShown.current = true;
     setClosed(true);
 
-    await sleep(1400);
-    await say({ kind: "doctor", content: closingMessage }, 2200);
+    await sleep(2000);
+    await say({ kind: "doctor", content: closingMessage }, 2800);
 
     if (hasProof) {
-      await sleep(1300);
-      await say({ kind: "proof" }, 1400);
+      await sleep(1900);
+      await say({ kind: "proof" }, 1800);
     }
 
-    await sleep(1600);
-    await say({ kind: "offer" }, 1300);
+    await sleep(2200);
+    await say({ kind: "offer" }, 1700);
   };
 
   const handleSend = async () => {
@@ -195,14 +195,14 @@ export default function ChatWindow() {
   const handleDissolved = async () => {
     setMessages((prev) => prev.filter((m) => m.kind !== "offer"));
 
-    await sleep(500);
+    await sleep(800);
     await say({
       kind: "doctor",
       content: "Perfeito! Só preciso de três informações para liberar o seu acesso.",
     });
 
-    await sleep(700);
-    await say({ kind: "checkout" }, 900);
+    await sleep(1000);
+    await say({ kind: "checkout" }, 1200);
   };
 
   const handleCheckout = async (data: {
@@ -235,10 +235,10 @@ export default function ChatWindow() {
   const handleCheckoutDissolved = async () => {
     setMessages((prev) => prev.filter((m) => m.kind !== "checkout"));
 
-    await sleep(500);
-    await say({ kind: "doctor", content: "Pronto, aqui está o seu PIX." }, 1200);
+    await sleep(800);
+    await say({ kind: "doctor", content: "Pronto, aqui está o seu PIX." }, 1500);
 
-    await sleep(500);
+    await sleep(800);
     setMessages((prev) => [...prev, { kind: "pix", pix: pendingPix.current }]);
   };
 
@@ -278,15 +278,20 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
           <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-cream bg-emerald-500" />
         </span>
         <div className="min-w-0">
-          <p className="font-display text-xl leading-tight text-ink">
+          <p className="truncate font-display text-xl leading-tight text-ink">
             {clinic.doctor.name}
           </p>
-          <p className="text-sm text-muted">
+          <p className="truncate text-sm text-muted">
             {clinic.doctor.title}
             {clinic.doctor.crm && ` · ${clinic.doctor.crm}`}
           </p>
         </div>
-        <span className="ml-auto hidden text-xs text-muted sm:block">online agora</span>
+        {/* Prova de que tem alguém do outro lado: é o que sustenta a
+            conversa, então aparece também no celular. */}
+        <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[11px] text-muted sm:text-xs">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          online agora
+        </span>
       </div>
 
       {/* Altura fixa deixa um vazio enorme no celular; aqui ela acompanha a
