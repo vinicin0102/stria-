@@ -55,7 +55,7 @@ export default function ChatVideo({ src, poster }: ChatVideoProps) {
         >
           <span
             className="flex h-14 w-14 items-center justify-center rounded-full
-                       bg-white/92 shadow-lift transition-transform duration-200
+                       bg-white/90 shadow-lift transition-transform duration-200
                        hover:scale-105"
           >
             <Play size={20} className="ml-0.5 text-rose" fill="currentColor" />

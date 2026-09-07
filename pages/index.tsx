@@ -1,14 +1,16 @@
 import { useState } from "react";
 import Head from "next/head";
+import Vsl from "../components/Vsl";
 import Quiz from "../components/Quiz";
 import ChatWindow from "../components/ChatWindow";
 import ExitIntent from "../components/ExitIntent";
 import { clinic } from "../config/clinic";
 
-type Stage = "quiz" | "chat";
+type Stage = "vsl" | "quiz" | "chat";
 
 export default function Home() {
-  const [stage, setStage] = useState<Stage>("quiz");
+  // Sem vídeo configurado, o funil começa direto nas perguntas.
+  const [stage, setStage] = useState<Stage>(clinic.vsl.src ? "vsl" : "quiz");
   const [userProfile, setUserProfile] = useState<any>(null);
   // Destravado se ela aceitar ficar no aviso de saída; vale até o fim.
   const [rescue, setRescue] = useState(false);
@@ -46,6 +48,8 @@ export default function Home() {
         </header>
 
         <main className="mx-auto w-full max-w-3xl flex-1 px-3 py-6 sm:px-5 sm:py-14">
+          {stage === "vsl" && <Vsl onFinish={() => setStage("quiz")} />}
+
           {stage === "quiz" && <Quiz onComplete={handleQuizComplete} />}
 
           {/* Oferta, dados e PIX acontecem dentro da conversa. */}
