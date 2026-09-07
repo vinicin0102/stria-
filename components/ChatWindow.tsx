@@ -13,7 +13,6 @@ import { track, purchaseParams } from "../lib/pixel";
 
 interface ChatWindowProps {
   userProfile: any;
-  rescue: boolean;
 }
 
 type Message =
@@ -37,8 +36,8 @@ const closingMessage = `Na prática é assim: nada de sessão em clínica. É um
   hasProof && clinic.socialProof.intro ? `\n\n${clinic.socialProof.intro}` : ""
 }`;
 
-export default function ChatWindow({ userProfile, rescue }: ChatWindowProps) {
-  const planId = planFor(rescue);
+export default function ChatWindow({ userProfile }: ChatWindowProps) {
+  const planId = planFor(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);

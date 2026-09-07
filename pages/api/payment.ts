@@ -5,10 +5,10 @@ import { sendCapiEvent } from "../../lib/capi";
 
 const API = "https://api.ironpayapp.com.br/api/public/v1";
 
-// O cliente escolhe entre dois planos conhecidos, nunca um valor. Preço
-// que chega pelo navegador é preço que o comprador edita no DevTools.
-const resolvePlan = (raw: unknown): PlanId =>
-  raw === "resgate" ? "resgate" : "padrao";
+// Sem o aviso de saída, nada na interface libera o plano de resgate.
+// Continuar aceitando o nome vindo do navegador deixaria qualquer um
+// pedir o preço menor pelo DevTools e pagar R$ 19,90 no lugar de R$ 36,80.
+const resolvePlan = (_raw: unknown): PlanId => "padrao";
 
 const onlyDigits = (v: unknown) => String(v ?? "").replace(/\D/g, "");
 

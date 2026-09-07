@@ -33,8 +33,11 @@ export const clinic = {
       offerHash: "4mom34ozin",
       productHash: "aup67qyv90",
       productTitle: "APP STRIAÉ",
-      price: 27,
+      price: 36.8,
     },
+    // Dormente: o aviso de saída que liberava este preço foi removido.
+    // Continua aqui porque a oferta segue ativa no IronPay, mas nenhuma
+    // requisição consegue selecioná-la (veja resolvePlan em api/payment).
     resgate: {
       offerHash: "0oahyxn15j",
       productHash: "ybcfqettui",

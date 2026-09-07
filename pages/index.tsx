@@ -3,7 +3,6 @@ import Head from "next/head";
 import Vsl from "../components/Vsl";
 import Quiz from "../components/Quiz";
 import ChatWindow from "../components/ChatWindow";
-import ExitIntent from "../components/ExitIntent";
 import { clinic } from "../config/clinic";
 
 type Stage = "vsl" | "quiz" | "chat";
@@ -12,8 +11,6 @@ export default function Home() {
   // Sem vídeo configurado, o funil começa direto nas perguntas.
   const [stage, setStage] = useState<Stage>(clinic.vsl.src ? "vsl" : "quiz");
   const [userProfile, setUserProfile] = useState<any>(null);
-  // Destravado se ela aceitar ficar no aviso de saída; vale até o fim.
-  const [rescue, setRescue] = useState(false);
 
   const handleQuizComplete = (answers: any) => {
     setUserProfile(answers);
@@ -27,9 +24,6 @@ export default function Home() {
             separadores de nó (<!-- -->) para dentro do título. */}
         <title>{`${clinic.name} — Avaliação personalizada da sua pele`}</title>
       </Head>
-
-      {/* Vale em qualquer etapa: quiz, conversa ou pagamento. */}
-      <ExitIntent userProfile={userProfile} onStay={() => setRescue(true)} />
 
       <div className="flex min-h-screen flex-col bg-cream">
         <header className="border-b border-line bg-cream/90 backdrop-blur-sm">
@@ -53,9 +47,7 @@ export default function Home() {
           {stage === "quiz" && <Quiz onComplete={handleQuizComplete} />}
 
           {/* Oferta, dados e PIX acontecem dentro da conversa. */}
-          {stage === "chat" && (
-            <ChatWindow userProfile={userProfile} rescue={rescue} />
-          )}
+          {stage === "chat" && <ChatWindow userProfile={userProfile} />}
         </main>
 
         <footer className="px-5 py-6">
