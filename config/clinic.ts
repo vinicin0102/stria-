@@ -18,10 +18,12 @@ export const clinic = {
   // Só números, com DDI. Ex.: "5511999999999". Vazio = botão oculto.
   whatsapp: "",
 
-  // Valor riscado, usado como referência nos dois planos.
+  // Valor riscado, usado como referência nos dois planos. A porcentagem
+  // exibida é calculada daqui contra o preço real de cada plano, então
+  // mexer neste número muda o desconto anunciado:
+  // 67 contra 36,80 dá 45%.
   price: {
-    original: 45,
-    discountPercent: 40,
+    original: 67,
   },
 
   // Cada plano aponta para uma oferta real do IronPay. O preço aqui tem
