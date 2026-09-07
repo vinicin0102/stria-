@@ -88,6 +88,16 @@
   }
 }
 
+/* A página inteira ocupa a tela e não rola; quem rola é só a conversa.
+   dvh acompanha a barra de endereço do celular, que aparece e some —
+   com 100vh o rodapé fica escondido atrás dela. A primeira linha é o
+   fallback para navegador que não conhece dvh. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
 /* Números de contagem regressiva não podem "dançar" a cada segundo */
 .tabular {
   font-variant-numeric: tabular-nums;

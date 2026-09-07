@@ -271,8 +271,8 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
   );
 
   return (
-    <div className="animate-fade-up overflow-hidden rounded-card border border-line bg-surface shadow-soft">
-      <div className="flex items-center gap-3 border-b border-line bg-cream/60 px-4 py-4 sm:gap-4 sm:px-6 sm:py-5">
+    <div className="animate-fade-up flex w-full flex-col overflow-hidden rounded-card border border-line bg-surface shadow-soft">
+      <div className="flex shrink-0 items-center gap-3 border-b border-line bg-cream/60 px-4 py-4 sm:gap-4 sm:px-6 sm:py-5">
         <span className="relative">
           <DoctorAvatar size={46} />
           <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-cream bg-emerald-500" />
@@ -294,11 +294,11 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
         </span>
       </div>
 
-      {/* Altura fixa deixa um vazio enorme no celular; aqui ela acompanha a
-          tela e ainda cabe o teclado quando o campo recebe foco. */}
+      {/* Ocupa o que sobra da tela em vez de uma altura fixa: é isso que
+          faz a página inteira não rolar, só a conversa. */}
       <div
         ref={scrollRef}
-        className="h-[58vh] min-h-[20rem] overflow-y-auto overflow-x-hidden px-3 py-4 sm:h-[28rem] sm:px-6 sm:py-6"
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-6 sm:py-6"
       >
         <div className="flex flex-col gap-4 sm:gap-5">
           {messages.map((msg, i) => {
@@ -417,7 +417,7 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
         </div>
       </div>
 
-      <div className="border-t border-line bg-cream/40 px-3 py-3 sm:px-6 sm:py-4">
+      <div className="shrink-0 border-t border-line bg-cream/40 px-3 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center gap-2 sm:gap-3">
           <input
             type="text"

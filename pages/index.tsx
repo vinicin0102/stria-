@@ -11,8 +11,8 @@ export default function Home() {
         <title>{`${clinic.name} — Converse com a ${clinic.doctor.name}`}</title>
       </Head>
 
-      <div className="flex min-h-screen flex-col bg-cream">
-        <header className="border-b border-line bg-cream/90 backdrop-blur-sm">
+      <div className="app-shell flex flex-col bg-cream">
+        <header className="shrink-0 border-b border-line bg-cream/90 backdrop-blur-sm">
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-2 px-5 py-7">
             <h1 className="font-display text-4xl font-normal tracking-[.22em] text-ink sm:text-5xl">
               {clinic.name}
@@ -29,11 +29,13 @@ export default function Home() {
 
         {/* Funil inteiro numa conversa só: apresentação, descoberta,
             oferta, dados e PIX. */}
-        <main className="mx-auto w-full max-w-3xl flex-1 px-3 py-6 sm:px-5 sm:py-14">
+        {/* min-h-0: sem isso o filho flex se recusa a encolher e volta a
+            empurrar a página para baixo. */}
+        <main className="mx-auto flex w-full min-h-0 max-w-3xl flex-1 px-3 py-6 sm:px-5 sm:py-14">
           <ChatWindow />
         </main>
 
-        <footer className="px-5 py-6">
+        <footer className="shrink-0 px-5 py-6">
           <p className="text-center text-xs text-muted/70">
             © {new Date().getFullYear()} {clinic.name}. Todos os direitos reservados.
           </p>
