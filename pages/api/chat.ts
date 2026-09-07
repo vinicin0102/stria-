@@ -51,11 +51,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 SOBRE O MÉTODO ${CLINIC.name.toUpperCase()}:
 É um método para ela fazer em casa — uma rotina passo a passo com orientações dermatológicas de cuidado com a pele. Não é procedimento de consultório, não é sessão em clínica. Ela recebe o passo a passo e aplica sozinha na rotina dela.
 
-PERFIL DELA:
-- Queixa principal: ${userProfile?.issues || "não informado"}
-- Convive há: ${userProfile?.duration || "não informado"}
-- Já tentou: ${userProfile?.treatments || "não informado"}
-- Objetivo: ${userProfile?.goals || "não informado"}
+O QUE VOCÊ SABE DELA:
+${userProfile?.name ? `Ela se chama ${userProfile.name}.` : "Nada ainda."}
+Não existe formulário nem questionário: tudo o que você souber além disso veio da própria conversa. Nunca finja saber a queixa dela, há quanto tempo ou o que já tentou — pergunte.
+
+O QUE DESCOBRIR, UMA COISA POR VEZ:
+1. Qual é a queixa (estrias, celulite, flacidez, ou mais de uma)
+2. Há quanto tempo ela convive com isso
+3. O que ela já tentou e não funcionou
 
 COMO RESPONDER:
 - No máximo 2 frases curtas. Seja direta.

@@ -11,33 +11,42 @@ import Disintegrate from "./Disintegrate";
 import { clinic, planFor } from "../config/clinic";
 import { track, purchaseParams } from "../lib/pixel";
 
-interface ChatWindowProps {
-  userProfile: any;
-}
-
 type Message =
   | { kind: "doctor"; content: string }
   | { kind: "user"; content: string }
+  | { kind: "vsl" }
   | { kind: "proof" }
   | { kind: "offer"; dissolving?: boolean }
   | { kind: "checkout"; dissolving?: boolean }
   | { kind: "pix"; pix: any };
 
-const MESSAGES_BEFORE_OFFER = 3;
+// Uma a mais que antes: a primeira resposta dela é só o nome, então a
+// descoberta real do caso começa na seguinte.
+const MESSAGES_BEFORE_OFFER = 4;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const videos = clinic.socialProof.videos;
 const hasProof = Boolean(videos.length || clinic.socialProof.images.length);
+const hasVsl = Boolean(clinic.vsl.src);
 
-// A IA já emenda dizendo que vai explicar; repetir "deixa eu te explicar"
-// aqui soaria como disco arranhado.
 const closingMessage = `Na prática é assim: nada de sessão em clínica. É uma rotina diária que você faz em casa, com cuidados dermatológicos que quase ninguém conhece, e eu te acompanho durante o processo.${
   hasProof && clinic.socialProof.intro ? `\n\n${clinic.socialProof.intro}` : ""
 }`;
 
-export default function ChatWindow({ userProfile }: ChatWindowProps) {
+// A primeira mensagem dela responde "como você se chama?". Tira os
+// rodeios mais comuns para o nome não sair como "oi sou a maria".
+const extrairNome = (texto: string) =>
+  texto
+    .replace(/^(oi|ol[áa]|bom dia|boa tarde|boa noite)[\s,!.]*/i, "")
+    .replace(/^(meu nome (é|e)|me chamo|sou a|sou o|eu sou a|eu sou o|é a|é o)\s+/i, "")
+    .replace(/[.!]+$/, "")
+    .trim()
+    .slice(0, 60) || texto.trim().slice(0, 60);
+
+export default function ChatWindow() {
   const planId = planFor(false);
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,31 +54,13 @@ export default function ChatWindow({ userProfile }: ChatWindowProps) {
   const [payError, setPayError] = useState("");
   const [sentCount, setSentCount] = useState(0);
   const [closed, setClosed] = useState(false);
+  const [nome, setNome] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const offerShown = useRef(false);
+  const abriu = useRef(false);
   const pendingPix = useRef<any>(null);
   const paidShown = useRef(false);
 
-  useEffect(() => {
-    setMessages([
-      {
-        kind: "doctor",
-        content: `Oi, ${userProfile?.name}! Sou a ${clinic.doctor.name}, ${clinic.doctor.title.toLowerCase()} da ${clinic.name}.
-
-Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te incomoda no dia a dia?`,
-      },
-    ]);
-  }, [userProfile]);
-
-  // Rola apenas o painel de mensagens — scrollIntoView puxaria a página inteira.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
-
-  // A oferta entra como a última fala da doutora, com as pausas de quem
-  // está digitando. Fica no envio, e não num efeito: um efeito que depende
-  // de `loading` e chama `setLoading` cancela os próprios timers na limpeza.
   // Cada bloco entra com pausa e indicador de digitação. Despejar tudo de
   // uma vez faz a conversa parecer script automático em vez de pessoa.
   const say = async (message: Message, think = 1800) => {
@@ -78,6 +69,42 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
     setLoading(false);
     setMessages((prev) => [...prev, message]);
   };
+
+  // Abertura: ela chega direto na conversa, sem quiz.
+  useEffect(() => {
+    if (abriu.current) return;
+    abriu.current = true;
+
+    (async () => {
+      await sleep(600);
+      await say(
+        {
+          kind: "doctor",
+          content: `Oi! Sou a ${clinic.doctor.name}, ${clinic.doctor.title.toLowerCase()} da ${clinic.name}.${
+            hasVsl ? `\n\n${clinic.vsl.intro}` : ""
+          }`,
+        },
+        1200
+      );
+
+      if (hasVsl) {
+        await sleep(600);
+        setMessages((prev) => [...prev, { kind: "vsl" }]);
+      }
+
+      await sleep(1400);
+      await say(
+        { kind: "doctor", content: "Antes de começarmos, como você se chama?" },
+        1400
+      );
+    })();
+  }, []);
+
+  // Rola apenas o painel de mensagens — scrollIntoView puxaria a página inteira.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
 
   const runClosingSequence = async () => {
     offerShown.current = true;
@@ -101,6 +128,13 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
 
     setInput("");
     setMessages((prev) => [...prev, { kind: "user", content: text }]);
+
+    // A primeira resposta é o nome. Guardamos aqui porque a cobrança
+    // precisa dele e não existe mais formulário antes da conversa.
+    const primeiraResposta = sentCount === 0;
+    const nomeDela = primeiraResposta ? extrairNome(text) : nome;
+    if (primeiraResposta) setNome(nomeDela);
+
     setLoading(true);
 
     // Sem o histórico, cada resposta sai desconectada do que ela contou.
@@ -118,7 +152,7 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
     try {
       const { data } = await axios.post("/api/chat", {
         message: text,
-        userProfile,
+        userProfile: { name: nomeDela },
         messageCount: sentCount,
         history,
         // Sem este aviso ela encerra com uma pergunta que a oferta
@@ -183,8 +217,7 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
       // O valor não vai daqui de propósito: quem define é o servidor, a
       // partir da configuração. Preço vindo do cliente é preço editável.
       const { data: res } = await axios.post("/api/payment", {
-        userProfile: { ...userProfile, ...data },
-        plan: planId,
+        userProfile: { name: nome, ...data },
       });
 
       // O formulário também se desfaz: o PIX nasce do mesmo lugar.
@@ -197,6 +230,16 @@ Vi aqui: ${userProfile?.issues}, há ${userProfile?.duration}. O que mais te inc
     } finally {
       setPaying(false);
     }
+  };
+
+  const handleCheckoutDissolved = async () => {
+    setMessages((prev) => prev.filter((m) => m.kind !== "checkout"));
+
+    await sleep(500);
+    await say({ kind: "doctor", content: "Pronto, aqui está o seu PIX." }, 1200);
+
+    await sleep(500);
+    setMessages((prev) => [...prev, { kind: "pix", pix: pendingPix.current }]);
   };
 
   // Disparado quando a consulta à IronPay confirma o pagamento.
@@ -218,23 +261,12 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
     });
   };
 
-  const handleCheckoutDissolved = async () => {
-    setMessages((prev) => prev.filter((m) => m.kind !== "checkout"));
-
-    await sleep(500);
-    await say({ kind: "doctor", content: "Pronto, aqui está o seu PIX." }, 1200);
-
-    await sleep(500);
-    setMessages((prev) => [
-      ...prev,
-      { kind: "pix", pix: pendingPix.current },
-    ]);
-  };
-
   const bubble = (key: number, node: React.ReactNode, wide = false) => (
     <div key={key} className="animate-slide-right flex items-end gap-2 sm:gap-3">
       <span className="w-8 shrink-0" />
-      <div className={`w-full ${wide ? "max-w-[92%]" : "max-w-[88%] sm:max-w-[82%]"}`}>{node}</div>
+      <div className={`w-full ${wide ? "max-w-[92%]" : "max-w-[88%] sm:max-w-[82%]"}`}>
+        {node}
+      </div>
     </div>
   );
 
@@ -268,7 +300,7 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
             if (msg.kind === "user") {
               return (
                 <div key={i} className="animate-slide-left flex justify-end">
-                  <div className="max-w-[88%] sm:max-w-[82%] whitespace-pre-line rounded-2xl rounded-br-sm bg-rose px-3.5 py-2.5 text-[15px] leading-relaxed text-white sm:px-4 sm:py-3 sm:text-base">
+                  <div className="max-w-[88%] whitespace-pre-line rounded-2xl rounded-br-sm bg-rose px-3.5 py-2.5 text-[15px] leading-relaxed text-white sm:max-w-[82%] sm:px-4 sm:py-3 sm:text-base">
                     {msg.content}
                   </div>
                 </div>
@@ -279,9 +311,21 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
               return (
                 <div key={i} className="animate-slide-right flex items-end gap-2 sm:gap-3">
                   <DoctorAvatar size={32} ring={false} />
-                  <div className="max-w-[88%] sm:max-w-[82%] whitespace-pre-line rounded-2xl rounded-bl-sm border border-line bg-cream/70 px-3.5 py-2.5 text-[15px] leading-relaxed text-ink sm:px-4 sm:py-3 sm:text-base">
+                  <div className="max-w-[88%] whitespace-pre-line rounded-2xl rounded-bl-sm border border-line bg-cream/70 px-3.5 py-2.5 text-[15px] leading-relaxed text-ink sm:max-w-[82%] sm:px-4 sm:py-3 sm:text-base">
                     {msg.content}
                   </div>
+                </div>
+              );
+            }
+
+            if (msg.kind === "vsl") {
+              return bubble(
+                i,
+                <div className="max-w-[280px]">
+                  <ChatVideo
+                    src={encodeURI(clinic.vsl.src)}
+                    poster={clinic.vsl.poster || undefined}
+                  />
                 </div>
               );
             }
@@ -292,9 +336,7 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
                 videos.length ? (
                   <div
                     className={
-                      videos.length > 1
-                        ? "grid grid-cols-2 gap-2"
-                        : "max-w-[280px]"
+                      videos.length > 1 ? "grid grid-cols-2 gap-2" : "max-w-[280px]"
                     }
                   >
                     {videos.map((src) => (
@@ -350,11 +392,7 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
               );
             }
 
-            return bubble(
-              i,
-              <ChatPix pix={msg.pix} onPaid={handlePaid} />,
-              true
-            );
+            return bubble(i, <ChatPix pix={msg.pix} onPaid={handlePaid} />, true);
           })}
 
           {loading && (

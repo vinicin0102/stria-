@@ -52,19 +52,14 @@ export const clinic = {
   // Vazio = nenhum script de rastreamento é carregado.
   facebookPixelId: "624262646647561",
 
-  // Vídeo de abertura, antes do quiz. src vazio = a etapa é pulada e o
-  // funil começa direto nas perguntas.
+  // Vídeo de apresentação, enviado pela doutora como primeira mensagem.
+  // src vazio = a conversa começa direto pela pergunta do nome.
   vsl: {
     src: "/video/video VSL.mp4.mp4",
     // Capa exibida antes do play. Sem ela o player abre no primeiro quadro.
     poster: "",
-    eyebrow: "Método STRIAÉ",
-    headline: "Por que nenhum creme resolveu as suas estrias até hoje",
-    subheadline:
-      "A Dra. Julia explica o que ela orienta as pacientes a fazer em casa. Assista até o fim para liberar a sua avaliação.",
-    // Quantos segundos antes do fim o botão aparece.
-    ctaAntesDoFim: 10,
-    ctaLabel: "Responder as perguntas",
+    intro:
+      "Gravei este vídeo rápido explicando o que eu oriento quem já tentou de tudo e não viu resultado:",
   },
 
   guaranteeDays: 7,

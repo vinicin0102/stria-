@@ -1,28 +1,14 @@
-import { useState } from "react";
 import Head from "next/head";
-import Vsl from "../components/Vsl";
-import Quiz from "../components/Quiz";
 import ChatWindow from "../components/ChatWindow";
 import { clinic } from "../config/clinic";
 
-type Stage = "vsl" | "quiz" | "chat";
-
 export default function Home() {
-  // Sem vídeo configurado, o funil começa direto nas perguntas.
-  const [stage, setStage] = useState<Stage>(clinic.vsl.src ? "vsl" : "quiz");
-  const [userProfile, setUserProfile] = useState<any>(null);
-
-  const handleQuizComplete = (answers: any) => {
-    setUserProfile(answers);
-    setStage("chat");
-  };
-
   return (
     <>
       <Head>
         {/* String única: interpolar texto solto faz o React vazar
             separadores de nó (<!-- -->) para dentro do título. */}
-        <title>{`${clinic.name} — Avaliação personalizada da sua pele`}</title>
+        <title>{`${clinic.name} — Converse com a ${clinic.doctor.name}`}</title>
       </Head>
 
       <div className="flex min-h-screen flex-col bg-cream">
@@ -41,13 +27,10 @@ export default function Home() {
           </div>
         </header>
 
+        {/* Funil inteiro numa conversa só: apresentação, descoberta,
+            oferta, dados e PIX. */}
         <main className="mx-auto w-full max-w-3xl flex-1 px-3 py-6 sm:px-5 sm:py-14">
-          {stage === "vsl" && <Vsl onFinish={() => setStage("quiz")} />}
-
-          {stage === "quiz" && <Quiz onComplete={handleQuizComplete} />}
-
-          {/* Oferta, dados e PIX acontecem dentro da conversa. */}
-          {stage === "chat" && <ChatWindow userProfile={userProfile} />}
+          <ChatWindow />
         </main>
 
         <footer className="px-5 py-6">
