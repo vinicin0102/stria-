@@ -69,6 +69,38 @@ export async function comBanco<T>(
   }
 }
 
+// Como comBanco engole os próprios erros de propósito, sem isto não há
+// como saber de fora se o banco respondeu — só o log da Vercel diria.
+// Reporta se conecta, se as tabelas existem e quantas linhas há, nunca
+// o conteúdo de nenhuma delas.
+export async function checarBanco() {
+  if (!sql) return { configurado: false, conecta: false, conversas: null };
+
+  try {
+    await sql`select 1`;
+  } catch (erro: any) {
+    return {
+      configurado: true,
+      conecta: false,
+      erro: String(erro?.message ?? erro).slice(0, 200),
+      conversas: null,
+    };
+  }
+
+  try {
+    await garantirSchema();
+    const [linha] = await sql`select count(*)::int as n from conversas`;
+    return { configurado: true, conecta: true, conversas: linha.n };
+  } catch (erro: any) {
+    return {
+      configurado: true,
+      conecta: true,
+      erro: String(erro?.message ?? erro).slice(0, 200),
+      conversas: null,
+    };
+  }
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const idValido = (v: unknown) => typeof v === "string" && UUID.test(v);
 
