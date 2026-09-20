@@ -1,14 +1,56 @@
-import { neon } from "@neondatabase/serverless";
+import { Pool } from "pg";
 import { ETAPA } from "./etapas";
 
-// A Vercel injeta POSTGRES_URL ao criar o banco pelo painel; a integração
-// direta do Neon usa DATABASE_URL. Aceitar as duas evita um passo manual.
+// O "Postgres" da Vercel virou um marketplace: pode ser Neon, Supabase,
+// Prisma e outros. Driver que fala TCP funciona com todos; o HTTP do
+// Neon só com o Neon, e falhava com "fetch failed" nos demais.
 const connectionString =
-  process.env.DATABASE_URL || process.env.POSTGRES_URL || "";
+  process.env.DATABASE_URL ||
+  process.env.POSTGRES_URL ||
+  process.env.POSTGRES_URL_NON_POOLING ||
+  "";
 
 export const dbConfigurado = Boolean(connectionString);
 
-const sql = dbConfigurado ? neon(connectionString) : null;
+let pool: Pool | null = null;
+
+function obterPool() {
+  if (!pool) {
+    pool = new Pool({
+      connectionString,
+      // Uma conexão por instância: função serverless multiplica processos,
+      // e um pool grande em cada um estoura o limite do banco.
+      max: 1,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 8_000,
+      // A conexão continua cifrada; o que se dispensa é a verificação da
+      // cadeia, que varia entre os provedores gerenciados.
+      ssl: connectionString.includes("sslmode=disable")
+        ? false
+        : { rejectUnauthorized: false },
+    });
+    pool.on("error", (e) => console.error("Pool do Postgres:", e.message));
+  }
+  return pool;
+}
+
+// Mantém a forma sql`...` de todas as consultas e continua parametrizando:
+// os valores viram $1, $2… e nunca entram concatenados no texto.
+type Consulta = (
+  strings: TemplateStringsArray,
+  ...valores: any[]
+) => Promise<any[]>;
+
+const sql: Consulta | null = dbConfigurado
+  ? async (strings, ...valores) => {
+      const texto = strings.reduce(
+        (acc, parte, i) => acc + parte + (i < valores.length ? `$${i + 1}` : ""),
+        ""
+      );
+      const { rows } = await obterPool().query(texto, valores);
+      return rows;
+    }
+  : null;
 
 export { ETAPA, ETAPAS } from "./etapas";
 
