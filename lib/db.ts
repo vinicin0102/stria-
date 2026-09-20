@@ -127,6 +127,77 @@ export async function comBanco<T>(
   }
 }
 
+// Fonte única das consultas do painel. O diagnóstico executa estas
+// mesmas funções: testar uma cópia do SQL não provaria nada, porque a
+// cópia pode divergir da que roda de verdade.
+//
+// Diferente das gravações, estas propagam o erro: numa consulta do
+// painel, falhar calado viraria uma tela vazia que parece "sem vendas".
+function exigirBanco() {
+  if (!sql) throw new Error("Banco não configurado");
+  return sql;
+}
+
+export async function listarConversas() {
+  const q = exigirBanco();
+  await garantirSchema();
+  return await q`
+      select c.id, c.criada_em, c.atualizada_em, c.nome, c.email,
+             c.telefone, c.etapa, c.valor,
+             count(m.id)::int as total_mensagens,
+             (select conteudo from mensagens
+               where conversa_id = c.id and papel = 'cliente'
+               order by id desc limit 1) as ultima_da_cliente
+        from conversas c
+        left join mensagens m on m.conversa_id = c.id
+       group by c.id
+       order by c.atualizada_em desc
+       limit 200
+  `;
+}
+
+export async function contarFunil() {
+  const q = exigirBanco();
+  await garantirSchema();
+  const linhas = await q`
+      select
+        count(*)::int as total,
+        count(*) filter (where etapa >= ${ETAPA.viuOferta})::int as viram_oferta,
+        count(*) filter (where etapa >= ${ETAPA.preencheuDados})::int as deram_dados,
+        count(*) filter (where etapa >= ${ETAPA.pixGerado})::int as geraram_pix,
+        count(*) filter (where etapa >= ${ETAPA.pagou})::int as pagaram,
+        coalesce(sum(valor) filter (where etapa >= ${ETAPA.pagou}), 0) as faturado
+      from conversas
+  `;
+  return linhas[0];
+}
+
+export async function buscarConversa(id: string) {
+  const q = exigirBanco();
+  await garantirSchema();
+
+  const [conversa] = await q`
+    select id, criada_em, atualizada_em, nome, email, telefone,
+           documento, etapa, pix_hash, valor
+      from conversas where id = ${id}
+  `;
+  if (!conversa) return { conversa: null, mensagens: [] };
+
+  const mensagens = await q`
+    select papel, conteudo, criada_em
+      from mensagens where conversa_id = ${id}
+     order by id asc
+  `;
+  return { conversa, mensagens };
+}
+
+async function consultasDoPainel() {
+  await listarConversas();
+  await contarFunil();
+  // Um id inexistente exercita o caminho sem depender de dado real.
+  await buscarConversa("00000000-0000-4000-8000-000000000000");
+}
+
 // Como comBanco engole os próprios erros de propósito, sem isto não há
 // como saber de fora se o banco respondeu — só o log da Vercel diria.
 // Reporta se conecta, se as tabelas existem e quantas linhas há, nunca
@@ -148,7 +219,17 @@ export async function checarBanco() {
   try {
     await garantirSchema();
     const [linha] = await sql`select count(*)::int as n from conversas`;
-    return { configurado: true, conecta: true, conversas: linha.n };
+
+    // Roda as mesmas consultas do painel para que um erro de SQL apareça
+    // aqui, e não na cara de quem abriu a página. Só o "deu certo" sai.
+    await consultasDoPainel();
+
+    return {
+      configurado: true,
+      conecta: true,
+      conversas: linha.n,
+      consultasDoPainel: true,
+    };
   } catch (erro: any) {
     return {
       configurado: true,
