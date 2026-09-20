@@ -4,11 +4,30 @@ import { ETAPA } from "./etapas";
 // O "Postgres" da Vercel virou um marketplace: pode ser Neon, Supabase,
 // Prisma e outros. Driver que fala TCP funciona com todos; o HTTP do
 // Neon só com o Neon, e falhava com "fetch failed" nos demais.
-const connectionString =
+const bruta =
   process.env.DATABASE_URL ||
   process.env.POSTGRES_URL ||
   process.env.POSTGRES_URL_NON_POOLING ||
   "";
+
+// O driver lê o sslmode de dentro da string e ele vence a opção `ssl`
+// passada ao pool — foi por isso que a conexão morria com
+// "self-signed certificate in certificate chain". Os poolers gerenciados
+// costumam apresentar cadeia que não fecha nas CAs embutidas do Node.
+// `no-verify` mantém o tráfego cifrado e dispensa só a verificação.
+function normalizarSsl(cs: string) {
+  if (!cs) return cs;
+  try {
+    const u = new URL(cs);
+    if (u.searchParams.get("sslmode") === "disable") return cs;
+    u.searchParams.set("sslmode", "no-verify");
+    return u.toString();
+  } catch {
+    return cs;
+  }
+}
+
+const connectionString = normalizarSsl(bruta);
 
 export const dbConfigurado = Boolean(connectionString);
 
@@ -23,11 +42,8 @@ function obterPool() {
       max: 1,
       idleTimeoutMillis: 10_000,
       connectionTimeoutMillis: 8_000,
-      // A conexão continua cifrada; o que se dispensa é a verificação da
-      // cadeia, que varia entre os provedores gerenciados.
-      ssl: connectionString.includes("sslmode=disable")
-        ? false
-        : { rejectUnauthorized: false },
+      // O SSL vem do sslmode já normalizado na string; repetir aqui só
+      // reintroduz o conflito que quebrava a conexão.
     });
     pool.on("error", (e) => console.error("Pool do Postgres:", e.message));
   }
