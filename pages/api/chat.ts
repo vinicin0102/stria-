@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { clinic } from "../../config/clinic";
+import { idValido, registrarDados, registrarMensagem } from "../../lib/db";
 
 const MODEL = "claude-sonnet-5";
 const MAX_HISTORY = 12;
@@ -34,7 +35,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { message, userProfile, messageCount, history, isFinalTurn } = req.body;
+    const { message, userProfile, messageCount, history, isFinalTurn, conversaId } =
+      req.body;
     const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!message) {
@@ -123,8 +125,20 @@ Então NÃO termine com pergunta e NÃO peça nenhuma informação. Feche o raci
       return res.status(502).json({ error: "O serviço de IA não retornou uma resposta" });
     }
 
+    const resposta = text.trim();
+
+    // Gravado aqui, e não no navegador, porque é o único ponto que vê as
+    // duas falas com certeza de que a resposta chegou.
+    if (idValido(conversaId)) {
+      if (userProfile?.name) {
+        await registrarDados(conversaId, { nome: userProfile.name });
+      }
+      await registrarMensagem(conversaId, "cliente", message);
+      await registrarMensagem(conversaId, "doutora", resposta);
+    }
+
     res.status(200).json({
-      message: text.trim(),
+      message: resposta,
       messageCount: (messageCount || 0) + 1,
     });
   } catch (error: any) {

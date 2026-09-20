@@ -9,5 +9,7 @@ export default function handler(_req: NextApiRequest, res: NextApiResponse) {
     pagamento: Boolean(process.env.IRONPAY_API_TOKEN),
     metaCapi: Boolean(process.env.FB_CAPI_TOKEN),
     pixel: Boolean(clinic.facebookPixelId),
+    banco: Boolean(process.env.DATABASE_URL || process.env.POSTGRES_URL),
+    painel: Boolean(process.env.ADMIN_PASSWORD),
   });
 }

@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { sendCapiEvent } from "../../lib/capi";
+import { marcarPagoPorHash } from "../../lib/db";
 
 const API = "https://api.ironpayapp.com.br/api/public/v1";
 const PAID = ["paid", "approved", "completed"];
@@ -36,6 +37,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (!PAID.includes(String(tx?.payment_status))) {
       return res.status(200).json({ ignored: "not_paid" });
     }
+
+    // O webhook chega mesmo se ela fechar a aba, então é a fonte mais
+    // confiável para o painel saber quem realmente pagou.
+    await marcarPagoPorHash(hash);
 
     await sendCapiEvent({
       eventName: "Purchase",

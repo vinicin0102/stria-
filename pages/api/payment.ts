@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import QRCode from "qrcode";
 import { clinic, PlanId } from "../../config/clinic";
 import { sendCapiEvent } from "../../lib/capi";
+import { idValido, registrarDados, registrarPix } from "../../lib/db";
 
 const API = "https://api.ironpayapp.com.br/api/public/v1";
 
@@ -32,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { userProfile, plan: rawPlan } = req.body ?? {};
+    const { userProfile, plan: rawPlan, conversaId } = req.body ?? {};
     const planId = resolvePlan(rawPlan);
     const chosen = clinic.plans[planId];
     const amountCents = Math.round(chosen.price * 100);
@@ -97,6 +98,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       width: 320,
       color: { dark: "#2B2422", light: "#FFFFFF" },
     });
+
+    if (idValido(conversaId)) {
+      await registrarDados(conversaId, {
+        nome: name,
+        email,
+        telefone: phone,
+        documento: document,
+      });
+      await registrarPix(conversaId, data.hash, amountCents / 100);
+    }
 
     // Aguardado de propósito: em função serverless o processo pode ser
     // encerrado assim que a resposta sai, e o evento se perderia.

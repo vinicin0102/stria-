@@ -44,8 +44,27 @@ const extrairNome = (texto: string) =>
     .trim()
     .slice(0, 60) || texto.trim().slice(0, 60);
 
+// Identifica a conversa no painel. Gerado no navegador para não custar
+// uma ida ao servidor antes da primeira fala.
+const novoId = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`.replace(/\D/g, "").slice(0, 32);
+
 export default function ChatWindow() {
   const planId = planFor(false);
+  const conversaId = useRef<string>("");
+  if (!conversaId.current) conversaId.current = novoId();
+
+  // Gravação é secundária: se falhar, a conversa segue como se nada fosse.
+  const registrar = (corpo: {
+    mensagens?: { papel: "doutora" | "cliente"; conteudo: string }[];
+    etapa?: number;
+  }) => {
+    axios
+      .post("/api/track", { conversaId: conversaId.current, ...corpo })
+      .catch(() => {});
+  };
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -77,15 +96,10 @@ export default function ChatWindow() {
 
     (async () => {
       await sleep(800);
-      await say(
-        {
-          kind: "doctor",
-          content: `Oi! Sou a ${clinic.doctor.name}, ${clinic.doctor.title.toLowerCase()} da ${clinic.name}.${
-            hasVsl ? `\n\n${clinic.vsl.intro}` : ""
-          }`,
-        },
-        1600
-      );
+      const abertura = `Oi! Sou a ${clinic.doctor.name}, ${clinic.doctor.title.toLowerCase()} da ${clinic.name}.${
+        hasVsl ? `\n\n${clinic.vsl.intro}` : ""
+      }`;
+      await say({ kind: "doctor", content: abertura }, 1600);
 
       if (hasVsl) {
         await sleep(900);
@@ -93,10 +107,15 @@ export default function ChatWindow() {
       }
 
       await sleep(2000);
-      await say(
-        { kind: "doctor", content: "Antes de começarmos, como você se chama?" },
-        1800
-      );
+      const pedidoDoNome = "Antes de começarmos, como você se chama?";
+      await say({ kind: "doctor", content: pedidoDoNome }, 1800);
+
+      registrar({
+        mensagens: [
+          { papel: "doutora", conteudo: abertura },
+          { papel: "doutora", conteudo: pedidoDoNome },
+        ],
+      });
     })();
   }, []);
 
@@ -120,6 +139,8 @@ export default function ChatWindow() {
 
     await sleep(2200);
     await say({ kind: "offer" }, 1700);
+
+    registrar({ mensagens: [{ papel: "doutora", conteudo: closingMessage }], etapa: 1 });
   };
 
   const handleSend = async () => {
@@ -158,6 +179,7 @@ export default function ChatWindow() {
         // Sem este aviso ela encerra com uma pergunta que a oferta
         // atropela em seguida, e a cliente nunca chega a responder.
         isFinalTurn: sentCount + 1 >= MESSAGES_BEFORE_OFFER,
+        conversaId: conversaId.current,
       });
       setMessages((prev) => [...prev, { kind: "doctor", content: data.message }]);
       answered = true;
@@ -218,6 +240,7 @@ export default function ChatWindow() {
       // partir da configuração. Preço vindo do cliente é preço editável.
       const { data: res } = await axios.post("/api/payment", {
         userProfile: { name: nome, ...data },
+        conversaId: conversaId.current,
       });
 
       // O formulário também se desfaz: o PIX nasce do mesmo lugar.
