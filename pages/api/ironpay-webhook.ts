@@ -1,3 +1,7 @@
+// Legado: o checkout agora é ZuckPay (api/zuckpay-webhook). Esta rota fica
+// de pé só para as cobranças IronPay geradas antes da troca — se alguma
+// delas for paga, ainda cai no painel e no Meta. Quando não houver mais
+// PIX antigo pendente, apague este arquivo e a variável IRONPAY_API_TOKEN.
 import type { NextApiRequest, NextApiResponse } from "next";
 import { sendCapiEvent } from "../../lib/capi";
 import { marcarPagoPorHash } from "../../lib/db";

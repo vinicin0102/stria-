@@ -29,15 +29,20 @@ export const clinic = {
     original: 67,
   },
 
-  // Cada plano aponta para uma oferta real do IronPay. O preço aqui tem
-  // que bater com o da oferta lá, senão a cobrança sai errada.
-  // "resgate" é liberado quando ela decide ficar no aviso de saída — só
-  // prometemos desconto extra porque ele existe de verdade.
+  // O preço cobrado sai daqui: na ZuckPay o valor vai no corpo da
+  // cobrança, então este número é a fonte da verdade, não um espelho do
+  // painel. "productTitle" é o que aparece na descrição da transação.
+  //
+  // "zuckProductId" é opcional — só serve para amarrar a venda a um
+  // produto no painel deles. Vazio = a cobrança é criada do mesmo jeito.
+  //
+  // Os hashes do IronPay ficam para as cobranças antigas ainda pendentes.
   plans: {
     padrao: {
       offerHash: "4mom34ozin",
       productHash: "aup67qyv90",
-      productTitle: "APP STRIAÉ",
+      zuckProductId: "",
+      productTitle: "Guia do Odor Íntimo",
       price: 36.8,
     },
     // Dormente: o aviso de saída que liberava este preço foi removido.
@@ -46,7 +51,8 @@ export const clinic = {
     resgate: {
       offerHash: "0oahyxn15j",
       productHash: "ybcfqettui",
-      productTitle: "STRIAÉ",
+      zuckProductId: "",
+      productTitle: "Guia do Odor Íntimo",
       price: 19.9,
     },
   },
