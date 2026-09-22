@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { clinic } from "../../config/clinic";
 import { checarBanco } from "../../lib/db";
-import { zuckpayConfigurado } from "../../lib/zuckpay";
+import { checarCredenciais, zuckpayConfigurado } from "../../lib/zuckpay";
 
 // Só booleanos e um diagnóstico de conexão: diz o que está configurado e
 // se o banco responde, nunca valores nem dados de ninguém. Serve para
@@ -10,11 +10,12 @@ export default async function handler(
   _req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const banco = await checarBanco();
+  const [banco, zuckpay] = await Promise.all([checarBanco(), checarCredenciais()]);
 
   res.status(200).json({
     chat: Boolean(process.env.ANTHROPIC_API_KEY),
     pagamento: zuckpayConfigurado,
+    zuckpay,
     // Assinatura do postback: sem ela o aviso de pagamento ainda funciona,
     // porque a confirmação vem da consulta, mas fica sem autenticação.
     webhookAssinado: Boolean(process.env.ZUCKPAY_WEBHOOK_SECRET),

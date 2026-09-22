@@ -4,8 +4,11 @@ import crypto from "crypto";
 // transforma o POST em GET — a cobrança simplesmente não é criada.
 const BASE = process.env.ZUCKPAY_BASE_URL || "https://www.zuckpay.com.br/conta";
 
-const clientId = process.env.ZUCKPAY_CLIENT_ID || "";
-const clientSecret = process.env.ZUCKPAY_CLIENT_SECRET || "";
+// trim: colar a credencial no painel costuma trazer espaço ou quebra de
+// linha junto, e um único byte a mais muda o base64 inteiro — a API
+// responde "client_id ou client_secret inválidos" sem dizer o porquê.
+const clientId = (process.env.ZUCKPAY_CLIENT_ID || "").trim();
+const clientSecret = (process.env.ZUCKPAY_CLIENT_SECRET || "").trim();
 
 export const zuckpayConfigurado = Boolean(clientId && clientSecret);
 
@@ -140,6 +143,40 @@ export async function consultarStatus(
     telefone: typeof r?.telefone === "string" ? r.telefone : undefined,
     bruto: r,
   };
+}
+
+// Diagnóstico de credencial sem criar cobrança: consulta uma transação
+// que não existe. Se a resposta for qualquer coisa que não "autenticação
+// recusada", é porque o par client_id/client_secret foi aceito.
+//
+// Também devolve o tamanho de cada credencial e se veio com espaço em
+// volta — o suficiente para achar um erro de cópia sem expor o valor.
+export async function checarCredenciais() {
+  const bruto = {
+    idTamanho: (process.env.ZUCKPAY_CLIENT_ID || "").length,
+    segredoTamanho: (process.env.ZUCKPAY_CLIENT_SECRET || "").length,
+    idComEspaco: (process.env.ZUCKPAY_CLIENT_ID || "") !== clientId,
+    segredoComEspaco: (process.env.ZUCKPAY_CLIENT_SECRET || "") !== clientSecret,
+  };
+
+  if (!zuckpayConfigurado) return { auth: "ausente" as const, ...bruto };
+
+  try {
+    await consultarStatus({ transactionId: "diagnostico-inexistente" });
+    return { auth: "ok" as const, ...bruto };
+  } catch (erro: any) {
+    const msg = String(erro?.message ?? "");
+    const credencialRuim =
+      erro?.status === 401 ||
+      erro?.status === 403 ||
+      /client_id|client_secret|credenc|unauthor/i.test(msg);
+    // Transação inexistente é resposta esperada: prova que autenticou.
+    return {
+      auth: credencialRuim ? ("recusada" as const) : ("ok" as const),
+      motivo: credencialRuim ? msg.slice(0, 120) : undefined,
+      ...bruto,
+    };
+  }
 }
 
 // Assinatura do postback: v1 = HMAC-SHA256("<timestamp>.<corpo cru>", segredo).
