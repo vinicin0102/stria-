@@ -55,16 +55,13 @@ export const clinic = {
   // Vazio = nenhum script de rastreamento é carregado.
   facebookPixelId: "624262646647561",
 
-  // Vídeo de apresentação, enviado pela doutora como primeira mensagem.
-  // src vazio = a conversa começa direto.
-  //
-  // Desligado na virada para saúde íntima: os arquivos em public/video
-  // falam de estrias e ficariam fora de assunto. Grave novos e aponte
-  // aqui — o player e o lugar na conversa continuam prontos.
-  vsl: {
-    src: "",
+  // Mini VSL do fechamento: vai na última mensagem da doutora, logo
+  // acima da oferta. src vazio = a oferta aparece sozinha.
+  closingVideo: {
+    src: "/video/vsl-final.mp4",
+    // Capa mostrada antes do play. Sem ela o player pinta o primeiro
+    // quadro do próprio arquivo, que já resolve na maioria dos casos.
     poster: "",
-    intro: "",
   },
 
   guaranteeDays: 7,
@@ -91,12 +88,13 @@ export const clinic = {
   // Vazio = o carrossel não aparece e a mensagem não menciona resultados.
   socialProof: {
     // Vídeos têm prioridade: se houver algum, o carrossel não aparece.
-    // Dois ficam lado a lado no computador e empilhados no celular.
+    // Entram pequenos, em três colunas, logo abaixo do botão da oferta.
     // Use sempre .mp4 (H.264/AAC): .mov falha em parte dos Androids.
-    // Desligados na virada de assunto: os arquivos que estavam aqui
-    // falam de estrias. Depoimento fora de tema derruba a confiança em
-    // vez de construir. Aponte para os novos quando tiver.
-    videos: [] as string[],
+    videos: [
+      "/video/depoimento-1.mp4",
+      "/video/depoimento-2.mp4",
+      "/video/depoimento-3.mp4",
+    ],
     // Imagem de capa mostrada antes do play. Sem ela o player abre num
     // quadro preto — vale exportar um frame do próprio vídeo.
     poster: "",

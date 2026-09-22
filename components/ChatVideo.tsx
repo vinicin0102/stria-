@@ -4,9 +4,12 @@ import { Play } from "lucide-react";
 interface ChatVideoProps {
   src: string;
   poster?: string;
+  // Miniatura: o botão de play de 56px cobriria quase todo o quadro de
+  // um vídeo de 100px de largura.
+  compact?: boolean;
 }
 
-export default function ChatVideo({ src, poster }: ChatVideoProps) {
+export default function ChatVideo({ src, poster, compact }: ChatVideoProps) {
   const ref = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
 
@@ -31,7 +34,11 @@ export default function ChatVideo({ src, poster }: ChatVideoProps) {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-line bg-ink">
+    <div
+      className={`relative overflow-hidden border border-line bg-ink ${
+        compact ? "rounded-lg" : "rounded-2xl"
+      }`}
+    >
       <video
         ref={ref}
         src={src}
@@ -54,11 +61,15 @@ export default function ChatVideo({ src, poster }: ChatVideoProps) {
                      transition-colors hover:bg-ink/20"
         >
           <span
-            className="flex h-14 w-14 items-center justify-center rounded-full
-                       bg-white/90 shadow-lift transition-transform duration-200
-                       hover:scale-105"
+            className={`flex items-center justify-center rounded-full bg-white/90
+                        shadow-lift transition-transform duration-200 hover:scale-105
+                        ${compact ? "h-7 w-7" : "h-14 w-14"}`}
           >
-            <Play size={20} className="ml-0.5 text-rose" fill="currentColor" />
+            <Play
+              size={compact ? 11 : 20}
+              className="ml-0.5 text-rose"
+              fill="currentColor"
+            />
           </span>
         </button>
       )}

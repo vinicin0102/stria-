@@ -25,19 +25,20 @@ interface ChatWindowProps {
   userProfile: any;
 }
 
-// O quiz já fez a descoberta, então a conversa é mais curta: três trocas
-// antes da oferta, como no desenho original do funil.
-const MESSAGES_BEFORE_OFFER = 3;
+// O quiz já fez a descoberta e quem explica o método é o vídeo do
+// fechamento, então bastam duas trocas: cada uma a mais é uma chamada
+// de API paga para dizer o que a VSL diz melhor.
+const MESSAGES_BEFORE_OFFER = 2;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const videos = clinic.socialProof.videos;
 const hasProof = Boolean(videos.length || clinic.socialProof.images.length);
-const hasVsl = Boolean(clinic.vsl.src);
+const hasClosingVideo = Boolean(clinic.closingVideo.src);
 
-const closingMessage = `Na prática é assim: nada de clínica, nada de remédio por conta própria. É uma rotina diária de cuidado íntimo que você faz em casa, com o que evitar e o que fazer em cada fase do ciclo, e eu te acompanho durante o processo.${
-  hasProof && clinic.socialProof.intro ? `\n\n${clinic.socialProof.intro}` : ""
-}`;
+// Curta de propósito: o vídeo logo abaixo é que explica o método.
+const closingMessage =
+  "Deixa eu te mostrar como isso funciona na prática — gravei esse vídeo rapidinho para você:";
 
 // Identifica a conversa no painel. Gerado no navegador para não custar
 // uma ida ao servidor antes da primeira fala.
@@ -93,15 +94,8 @@ export default function ChatWindow({ userProfile }: ChatWindowProps) {
 
     (async () => {
       await sleep(800);
-      const abertura = `Oi, ${nome}! Sou a ${clinic.doctor.name}. Acabei de ler o que você respondeu.${
-        hasVsl ? `\n\n${clinic.vsl.intro}` : ""
-      }`;
+      const abertura = `Oi, ${nome}! Sou a ${clinic.doctor.name}. Acabei de ler o que você respondeu.`;
       await say({ kind: "doctor", content: abertura }, 1600);
-
-      if (hasVsl) {
-        await sleep(900);
-        setMessages((prev) => [...prev, { kind: "vsl" }]);
-      }
 
       await sleep(2000);
       const primeiraPergunta =
@@ -124,20 +118,27 @@ export default function ChatWindow({ userProfile }: ChatWindowProps) {
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
+  // Fechamento na ordem pedida: mini VSL, oferta com o botão logo abaixo,
+  // e os depoimentos pequenos embaixo de tudo.
   const runClosingSequence = async () => {
     offerShown.current = true;
     setClosed(true);
 
-    await sleep(2000);
-    await say({ kind: "doctor", content: closingMessage }, 2800);
+    await sleep(1600);
+    await say({ kind: "doctor", content: closingMessage }, 2200);
 
-    if (hasProof) {
-      await sleep(1900);
-      await say({ kind: "proof" }, 1800);
+    if (hasClosingVideo) {
+      await sleep(900);
+      setMessages((prev) => [...prev, { kind: "vsl" }]);
     }
 
     await sleep(2200);
     await say({ kind: "offer" }, 1700);
+
+    if (hasProof) {
+      await sleep(1200);
+      setMessages((prev) => [...prev, { kind: "proof" }]);
+    }
 
     registrar({ mensagens: [{ papel: "doutora", conteudo: closingMessage }], etapa: 1 });
   };
@@ -338,27 +339,25 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
               );
             }
 
+            // Mini VSL do fechamento, logo antes da oferta.
             if (msg.kind === "vsl") {
               return bubble(
                 i,
-                <div className="max-w-[280px]">
-                  <ChatVideo
-                    src={encodeURI(clinic.vsl.src)}
-                    poster={clinic.vsl.poster || undefined}
-                  />
-                </div>
+                <ChatVideo
+                  src={encodeURI(clinic.closingVideo.src)}
+                  poster={clinic.closingVideo.poster || undefined}
+                />,
+                true
               );
             }
 
+            // Depoimentos abaixo do botão, em miniatura: três colunas
+            // cabem no celular sem empurrar a oferta para fora da tela.
             if (msg.kind === "proof") {
               return bubble(
                 i,
                 videos.length ? (
-                  <div
-                    className={
-                      videos.length > 1 ? "grid grid-cols-2 gap-2" : "max-w-[280px]"
-                    }
-                  >
+                  <div className="grid grid-cols-3 gap-1.5">
                     {videos.map((src) => (
                       <ChatVideo
                         key={src}
@@ -366,13 +365,14 @@ Enviei tudo para o seu e-mail. Qualquer dúvida durante o processo, é só me ch
                         // parêntese, que quebram o src sem codificar.
                         src={encodeURI(src)}
                         poster={clinic.socialProof.poster || undefined}
+                        compact
                       />
                     ))}
                   </div>
                 ) : (
                   <ProofCarousel images={clinic.socialProof.images} />
                 ),
-                videos.length > 1
+                true
               );
             }
 
