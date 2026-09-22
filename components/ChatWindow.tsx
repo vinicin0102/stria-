@@ -20,9 +20,14 @@ type Message =
   | { kind: "checkout"; dissolving?: boolean }
   | { kind: "pix"; pix: any };
 
-// Uma a mais que antes: a primeira resposta dela é só o nome, então a
-// descoberta real do caso começa na seguinte.
-const MESSAGES_BEFORE_OFFER = 4;
+interface ChatWindowProps {
+  // Nome e respostas do quiz. A doutora já entra sabendo o caso dela.
+  userProfile: any;
+}
+
+// O quiz já fez a descoberta, então a conversa é mais curta: três trocas
+// antes da oferta, como no desenho original do funil.
+const MESSAGES_BEFORE_OFFER = 3;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -30,19 +35,9 @@ const videos = clinic.socialProof.videos;
 const hasProof = Boolean(videos.length || clinic.socialProof.images.length);
 const hasVsl = Boolean(clinic.vsl.src);
 
-const closingMessage = `Na prática é assim: nada de sessão em clínica. É uma rotina diária que você faz em casa, com cuidados dermatológicos que quase ninguém conhece, e eu te acompanho durante o processo.${
+const closingMessage = `Na prática é assim: nada de clínica, nada de remédio por conta própria. É uma rotina diária de cuidado íntimo que você faz em casa, com o que evitar e o que fazer em cada fase do ciclo, e eu te acompanho durante o processo.${
   hasProof && clinic.socialProof.intro ? `\n\n${clinic.socialProof.intro}` : ""
 }`;
-
-// A primeira mensagem dela responde "como você se chama?". Tira os
-// rodeios mais comuns para o nome não sair como "oi sou a maria".
-const extrairNome = (texto: string) =>
-  texto
-    .replace(/^(oi|ol[áa]|bom dia|boa tarde|boa noite)[\s,!.]*/i, "")
-    .replace(/^(meu nome (é|e)|me chamo|sou a|sou o|eu sou a|eu sou o|é a|é o)\s+/i, "")
-    .replace(/[.!]+$/, "")
-    .trim()
-    .slice(0, 60) || texto.trim().slice(0, 60);
 
 // Identifica a conversa no painel. Gerado no navegador para não custar
 // uma ida ao servidor antes da primeira fala.
@@ -51,8 +46,9 @@ const novoId = () =>
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random()}`.replace(/\D/g, "").slice(0, 32);
 
-export default function ChatWindow() {
+export default function ChatWindow({ userProfile }: ChatWindowProps) {
   const planId = planFor(false);
+  const nome = userProfile?.name ?? "";
   const conversaId = useRef<string>("");
   if (!conversaId.current) conversaId.current = novoId();
 
@@ -60,6 +56,7 @@ export default function ChatWindow() {
   const registrar = (corpo: {
     mensagens?: { papel: "doutora" | "cliente"; conteudo: string }[];
     etapa?: number;
+    nome?: string;
   }) => {
     axios
       .post("/api/track", { conversaId: conversaId.current, ...corpo })
@@ -73,7 +70,6 @@ export default function ChatWindow() {
   const [payError, setPayError] = useState("");
   const [sentCount, setSentCount] = useState(0);
   const [closed, setClosed] = useState(false);
-  const [nome, setNome] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const offerShown = useRef(false);
   const abriu = useRef(false);
@@ -89,14 +85,15 @@ export default function ChatWindow() {
     setMessages((prev) => [...prev, message]);
   };
 
-  // Abertura: ela chega direto na conversa, sem quiz.
+  // Abertura: ela vem do quiz, então a doutora já cita o que ela marcou
+  // em vez de repetir perguntas que ela acabou de responder.
   useEffect(() => {
     if (abriu.current) return;
     abriu.current = true;
 
     (async () => {
       await sleep(800);
-      const abertura = `Oi! Sou a ${clinic.doctor.name}, ${clinic.doctor.title.toLowerCase()} da ${clinic.name}.${
+      const abertura = `Oi, ${nome}! Sou a ${clinic.doctor.name}. Acabei de ler o que você respondeu.${
         hasVsl ? `\n\n${clinic.vsl.intro}` : ""
       }`;
       await say({ kind: "doctor", content: abertura }, 1600);
@@ -107,13 +104,15 @@ export default function ChatWindow() {
       }
 
       await sleep(2000);
-      const pedidoDoNome = "Antes de começarmos, como você se chama?";
-      await say({ kind: "doctor", content: pedidoDoNome }, 1800);
+      const primeiraPergunta =
+        "Pode falar comigo sem filtro, aqui é só entre nós duas. Há quanto tempo isso vem te incomodando?";
+      await say({ kind: "doctor", content: primeiraPergunta }, 1800);
 
       registrar({
+        nome,
         mensagens: [
           { papel: "doutora", conteudo: abertura },
-          { papel: "doutora", conteudo: pedidoDoNome },
+          { papel: "doutora", conteudo: primeiraPergunta },
         ],
       });
     })();
@@ -149,13 +148,6 @@ export default function ChatWindow() {
 
     setInput("");
     setMessages((prev) => [...prev, { kind: "user", content: text }]);
-
-    // A primeira resposta é o nome. Guardamos aqui porque a cobrança
-    // precisa dele e não existe mais formulário antes da conversa.
-    const primeiraResposta = sentCount === 0;
-    const nomeDela = primeiraResposta ? extrairNome(text) : nome;
-    if (primeiraResposta) setNome(nomeDela);
-
     setLoading(true);
 
     // Sem o histórico, cada resposta sai desconectada do que ela contou.
@@ -173,7 +165,7 @@ export default function ChatWindow() {
     try {
       const { data } = await axios.post("/api/chat", {
         message: text,
-        userProfile: { name: nomeDela },
+        userProfile,
         messageCount: sentCount,
         history,
         // Sem este aviso ela encerra com uma pergunta que a oferta

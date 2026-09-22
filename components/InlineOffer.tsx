@@ -87,7 +87,7 @@ export default function InlineOffer({ onAccept, planId }: InlineOfferProps) {
         {revealed && (
           <div className="animate-fade-up mt-5">
             <div className="rounded-lg bg-cream/70 px-5 py-5 text-center">
-              <p className="eyebrow">Método completo {clinic.name}</p>
+              <p className="eyebrow">{clinic.name} completo</p>
               <div className="mt-2 flex items-center justify-center gap-3">
                 <span className="text-muted line-through">
                   {brl(clinic.price.original)}

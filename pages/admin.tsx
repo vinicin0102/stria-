@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import Head from "next/head";
 import axios from "axios";
 import { ETAPAS } from "../lib/etapas";
-import { brl } from "../config/clinic";
+import { brl, clinic } from "../config/clinic";
 
 const INTERVALO = 5000;
 
@@ -109,7 +109,9 @@ export default function Admin() {
           onSubmit={entrar}
           className="mx-auto mt-16 w-full max-w-xs rounded-card border border-line bg-surface p-6 shadow-soft"
         >
-          <h1 className="font-display text-2xl text-ink">Painel STRIAÉ</h1>
+          <h1 className="font-display text-2xl text-ink">
+            Painel · {clinic.name}
+          </h1>
           <input
             type="password"
             value={senha}
@@ -273,7 +275,7 @@ function Casca({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Head>
-        <title>Painel STRIAÉ</title>
+        <title>{`Painel · ${clinic.name}`}</title>
         {/* Painel com dado pessoal não entra em buscador. */}
         <meta name="robots" content="noindex, nofollow" />
       </Head>

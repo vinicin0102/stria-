@@ -1,17 +1,29 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { idValido, registrarEtapa, registrarMensagem } from "../../lib/db";
+import {
+  idValido,
+  registrarDados,
+  registrarEtapa,
+  registrarMensagem,
+} from "../../lib/db";
 
 const MAX_MENSAGENS = 6;
 const MAX_TAMANHO = 4000;
+const MAX_NOME = 80;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const { conversaId, mensagens, etapa } = req.body ?? {};
+  const { conversaId, mensagens, etapa, nome } = req.body ?? {};
   if (!idValido(conversaId)) {
     return res.status(400).json({ error: "Identificador inválido" });
+  }
+
+  // O nome vem do quiz, antes do checkout. Sem isto o painel só mostra
+  // quem chegou a preencher os dados de pagamento.
+  if (typeof nome === "string" && nome.trim()) {
+    await registrarDados(conversaId, { nome: nome.trim().slice(0, MAX_NOME) });
   }
 
   // Endpoint público que escreve no banco: limite o que ele aceita, senão

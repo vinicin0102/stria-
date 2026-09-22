@@ -7,7 +7,7 @@ export default function Document() {
         <meta charSet="utf-8" />
         <meta
           name="description"
-          content="STRIAÉ — tratamento para estrias, celulite e flacidez com acompanhamento profissional."
+          content="Guia do Odor Íntimo — rotina de cuidado íntimo em casa, com acompanhamento profissional."
         />
         <meta name="theme-color" content="#FBF7F2" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

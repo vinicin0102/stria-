@@ -2,12 +2,15 @@
 // então nada falso é exibido enquanto você não preencher.
 
 export const clinic = {
-  name: "STRIAÉ",
-  tagline: "Dermatologia estética avançada",
+  name: "Guia do Odor Íntimo",
+  tagline: "Saúde íntima com orientação profissional",
 
   doctor: {
     name: "Dra. Julia",
-    title: "Dermatologista",
+    // Não coloque "Ginecologista" aqui se ela não for: título de
+    // especialidade médica é protegido, e a foto identifica uma pessoa
+    // real. Troque pelo título verdadeiro dela.
+    title: "Especialista em saúde íntima",
     // Coloque a foto em public/ e aponte aqui (ex.: "/doutora.jpg").
     // Vazio = monograma com as iniciais, sem requisição quebrada.
     photo: "/doutora.jpg",
@@ -53,13 +56,15 @@ export const clinic = {
   facebookPixelId: "624262646647561",
 
   // Vídeo de apresentação, enviado pela doutora como primeira mensagem.
-  // src vazio = a conversa começa direto pela pergunta do nome.
+  // src vazio = a conversa começa direto.
+  //
+  // Desligado na virada para saúde íntima: os arquivos em public/video
+  // falam de estrias e ficariam fora de assunto. Grave novos e aponte
+  // aqui — o player e o lugar na conversa continuam prontos.
   vsl: {
-    src: "/video/video VSL.mp4.mp4",
-    // Capa exibida antes do play. Sem ela o player abre no primeiro quadro.
+    src: "",
     poster: "",
-    intro:
-      "Gravei este vídeo rápido explicando o que eu oriento quem já tentou de tudo e não viu resultado:",
+    intro: "",
   },
 
   guaranteeDays: 7,
@@ -72,9 +77,9 @@ export const clinic = {
   // O que a cliente recebe ao comprar. Ajuste conforme a entrega real
   // do método — é isso que ela lê antes de decidir pagar.
   includes: [
-    "Método STRIAÉ completo, passo a passo, para fazer em casa",
-    "Rotina diária com orientação dermatológica",
-    "Lista do que usar e do que evitar na sua pele",
+    "Guia do Odor Íntimo completo, para ler no celular",
+    "Rotina diária de cuidado íntimo, passo a passo",
+    "O que evitar: hábitos e produtos que pioram o quadro",
     "Acompanhamento com a doutora durante o processo",
     "Suporte direto pelo WhatsApp",
   ],
@@ -88,10 +93,10 @@ export const clinic = {
     // Vídeos têm prioridade: se houver algum, o carrossel não aparece.
     // Dois ficam lado a lado no computador e empilhados no celular.
     // Use sempre .mp4 (H.264/AAC): .mov falha em parte dos Androids.
-    videos: [
-      "/video/video.mp4.mp4",
-      "/video/Conversor MP4 - FreeConvert.com(1).mov",
-    ],
+    // Desligados na virada de assunto: os arquivos que estavam aqui
+    // falam de estrias. Depoimento fora de tema derruba a confiança em
+    // vez de construir. Aponte para os novos quando tiver.
+    videos: [] as string[],
     // Imagem de capa mostrada antes do play. Sem ela o player abre num
     // quadro preto — vale exportar um frame do próprio vídeo.
     poster: "",
@@ -104,7 +109,7 @@ export const clinic = {
     // ],
 
     // Frase da doutora logo antes dos vídeos ou das imagens.
-    intro: "Olha esses dois vídeos incríveis abaixo:",
+    intro: "",
   },
 
   // Depoimentos reais de clientes. Vazio = a seção não aparece.
