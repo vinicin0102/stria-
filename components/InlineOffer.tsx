@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Check, Clock, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
+import { Check, Clock, Gift, ShieldCheck, Sparkles, ArrowRight } from "lucide-react";
 import ScratchCard from "./ScratchCard";
 import { clinic, priceOf, savingsOf, brl, PlanId } from "../config/clinic";
 import { track, purchaseParams } from "../lib/pixel";
@@ -10,11 +10,6 @@ interface InlineOfferProps {
 }
 
 const OFFER_SECONDS = 5 * 60;
-
-const includes = [
-  ...clinic.includes,
-  `Garantia de satisfação de ${clinic.guaranteeDays} dias`,
-];
 
 export default function InlineOffer({ onAccept, planId }: InlineOfferProps) {
   const preco = priceOf(planId);
@@ -68,21 +63,55 @@ export default function InlineOffer({ onAccept, planId }: InlineOfferProps) {
       </div>
 
       <div className="p-4">
+        {/* O que ela leva fica acima da raspadinha e continua à vista
+            depois: é a lista que justifica o preço que vem logo abaixo. */}
+        <p className="eyebrow mb-3">O que você recebe</p>
+
+        <ul className="flex flex-col gap-2.5">
+          {clinic.includes.map((item, i) => (
+            <li
+              key={item}
+              className="animate-fade-up flex items-start gap-2.5"
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gold-soft">
+                <Check size={10} className="text-gold" strokeWidth={3} />
+              </span>
+              <span className="text-sm leading-relaxed text-ink">{item}</span>
+            </li>
+          ))}
+        </ul>
+
+        {clinic.bonus && (
+          <div
+            className="animate-fade-up mt-3 flex items-center gap-2 rounded-lg border
+                       border-dashed border-gold/50 bg-gold-soft/30 px-3 py-2.5"
+            style={{ animationDelay: `${clinic.includes.length * 60}ms` }}
+          >
+            <Gift size={14} className="shrink-0 text-gold" />
+            <span className="text-sm font-medium text-ink">
+              + {clinic.bonus}
+            </span>
+          </div>
+        )}
+
         {!revealed && (
-          <p className="mb-3 text-[15px] leading-relaxed text-ink">
-            Consegui liberar uma condição especial para o seu caso. Raspe aqui
-            para ver quanto de desconto eu reservei:
+          <p className="mb-3 mt-5 text-[15px] leading-relaxed text-ink">
+            E consegui liberar uma condição especial para o seu caso. Raspe
+            aqui para ver quanto de desconto eu reservei:
           </p>
         )}
 
-        <ScratchCard revealed={revealed} onReveal={() => setRevealed(true)}>
-          <div className="text-center">
-            <p className="font-display text-6xl leading-none text-rose">
-              {percentual}%
-            </p>
-            <p className="eyebrow mt-1">de desconto</p>
-          </div>
-        </ScratchCard>
+        <div className={revealed ? "mt-5" : ""}>
+          <ScratchCard revealed={revealed} onReveal={() => setRevealed(true)}>
+            <div className="text-center">
+              <p className="font-display text-6xl leading-none text-rose">
+                {percentual}%
+              </p>
+              <p className="eyebrow mt-1">de desconto</p>
+            </div>
+          </ScratchCard>
+        </div>
 
         {revealed && (
           <div className="animate-fade-up mt-5">
@@ -102,21 +131,6 @@ export default function InlineOffer({ onAccept, planId }: InlineOfferProps) {
                 <span className="font-medium text-rose-deep">{brl(economia)}</span>
               </p>
             </div>
-
-            <ul className="mt-5 flex flex-col gap-2.5">
-              {includes.map((item, i) => (
-                <li
-                  key={item}
-                  className="animate-fade-up flex items-start gap-2.5"
-                  style={{ animationDelay: `${i * 60}ms` }}
-                >
-                  <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gold-soft">
-                    <Check size={10} className="text-gold" strokeWidth={3} />
-                  </span>
-                  <span className="text-sm leading-relaxed text-ink">{item}</span>
-                </li>
-              ))}
-            </ul>
 
             {clinic.spotsLeft > 0 && (
               <p className="mt-4 text-center text-sm text-rose-deep">

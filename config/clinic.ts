@@ -74,12 +74,15 @@ export const clinic = {
   // O que a cliente recebe ao comprar. Ajuste conforme a entrega real
   // do método — é isso que ela lê antes de decidir pagar.
   includes: [
-    "Guia do Odor Íntimo completo, para ler no celular",
-    "Rotina diária de cuidado íntimo, passo a passo",
-    "O que evitar: hábitos e produtos que pioram o quadro",
-    "Acompanhamento com a doutora durante o processo",
-    "Suporte direto pelo WhatsApp",
+    "Método completo, do começo ao fim",
+    "Acesso imediato aos segredos da ginecologia",
+    "Receitas eficazes para cada tipo",
+    "Acompanhamento individual com a doutora",
+    "10 cuidados para o problema não voltar",
   ],
+
+  // Fecha a lista em destaque. Vazio = a linha não aparece.
+  bonus: "Bônus surpresa",
 
   // Carrossel exibido no chat, junto da mensagem que explica o método.
   // Coloque os arquivos em public/resultados/ e descomente a lista abaixo.
