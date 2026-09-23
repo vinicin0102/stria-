@@ -103,6 +103,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Barra da tela de análise. É animação, não transição, de propósito:
+   transição parte do valor que o elemento já tinha, e o React reaproveita
+   aqui o mesmo nó da barra das perguntas, que termina em 100% — a barra
+   corria de trás para frente e parecia travada no fim. Animação sempre
+   começa do zero. A duração vem do componente via --dur. */
+.barra-analise {
+  animation: barraAnalise var(--dur, 2800ms) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes barraAnalise {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
 .typing-dot {
   animation: typingDot 1.3s ease-in-out infinite;
 }
