@@ -72,7 +72,7 @@ export { ETAPA, ETAPAS } from "./etapas";
 
 let schemaPronto = false;
 
-// Criado sob demanda: são duas tabelas e nenhuma migração pendente, então
+// Criado sob demanda: são poucas tabelas e nenhuma migração pendente, então
 // ferramenta de migração aqui seria peso morto.
 async function garantirSchema() {
   if (!sql || schemaPronto) return;
@@ -107,6 +107,15 @@ async function garantirSchema() {
   await sql`
     create index if not exists conversas_recentes
       on conversas (atualizada_em desc)
+  `;
+  // Ajustes editados pelo painel (o "cérebro" da doutora). Chave e valor
+  // em JSON: cada ajuste novo entra sem precisar de migração.
+  await sql`
+    create table if not exists ajustes (
+      chave text primary key,
+      valor jsonb not null,
+      atualizado_em timestamptz not null default now()
+    )
   `;
 
   schemaPronto = true;
@@ -318,4 +327,24 @@ export async function marcarPagoPorHash(pixHash: string) {
        where pix_hash = ${pixHash}
     `;
   });
+}
+
+// Leitura tolerante: sem banco, quem chama cai no padrão e o chat segue.
+export async function lerAjuste<T>(chave: string): Promise<T | null> {
+  const linhas = await comBanco(
+    (q) => q`select valor from ajustes where chave = ${chave}`
+  );
+  return (linhas?.[0]?.valor as T) ?? null;
+}
+
+// Gravação vinda do painel propaga o erro: "salvo" sem ter salvo é pior
+// que uma mensagem de falha.
+export async function gravarAjuste(chave: string, valor: unknown) {
+  const q = exigirBanco();
+  await garantirSchema();
+  await q`
+    insert into ajustes (chave, valor) values (${chave}, ${JSON.stringify(valor)})
+    on conflict (chave) do update
+      set valor = excluded.valor, atualizado_em = now()
+  `;
 }
